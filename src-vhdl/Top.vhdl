@@ -9,17 +9,11 @@ entity Top is
        RX        : in std_logic;
        TX        : out std_logic;
 
-       -- SWITCHES  : in std_logic_array(0 to 7);
-       -- JOY_UP    : in std_logic;
-       -- JOY_DOWN  : in std_logic;
-       -- JOY_LEFT  : in std_logic;
-       -- JOY_RIGHT : in std_logic;
-
        VGA_VSYNC : out std_logic;
        VGA_HSYNC : out std_logic;
-       VGA_RED   : out unsigned(2 downto 0);
-       VGA_GREEN : out unsigned(2 downto 0);
-       VGA_BLUE  : out unsigned(1 downto 0)
+       VGA_RED   : out unsigned(3 downto 0);
+       VGA_GREEN : out unsigned(3 downto 0);
+       VGA_BLUE  : out unsigned(3 downto 0)
        );
 end;
 

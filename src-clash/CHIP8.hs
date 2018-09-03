@@ -30,7 +30,12 @@ topEntity
     -> Reset System Asynchronous
     -> Signal System Bit
     -> ( Signal System Bit
-      , (Signal System Bit, Signal System Bit, Signal System (Unsigned 3), Signal System (Unsigned 3), Signal System (Unsigned 2))
+      , ( Signal System Bit
+        , Signal System Bit
+        , Signal System (Unsigned 4)
+        , Signal System (Unsigned 4)
+        , Signal System (Unsigned 4)
+        )
       )
 topEntity = exposeClockReset board
   where
