@@ -5,15 +5,20 @@ use work.all;
 use work.chip8_types.all;
 
 entity Top is
-  port(CLK_32MHZ : in std_logic;
-       RX        : in std_logic;
-       TX        : out std_logic;
+  port(CLK_32MHZ    : in std_logic;
+       RX           : in std_logic;
+       TX           : out std_logic;
 
-       VGA_VSYNC : out std_logic;
-       VGA_HSYNC : out std_logic;
-       VGA_RED   : out unsigned(3 downto 0);
-       VGA_GREEN : out unsigned(3 downto 0);
-       VGA_BLUE  : out unsigned(3 downto 0)
+       BUTTON_UP    : in std_logic;
+       BUTTON_DOWN  : in std_logic;
+       BUTTON_LEFT  : in std_logic;
+       BUTTON_RIGHT : in std_logic;
+
+       VGA_VSYNC    : out std_logic;
+       VGA_HSYNC    : out std_logic;
+       VGA_RED      : out unsigned(3 downto 0);
+       VGA_GREEN    : out unsigned(3 downto 0);
+       VGA_BLUE     : out unsigned(3 downto 0)
        );
 end;
 
@@ -44,6 +49,10 @@ begin
             RESET => RESET,
             RX => RX,
             TX => TX,
+            BUTTON_UP => BUTTON_UP,
+            BUTTON_DOWN => BUTTON_DOWN,
+            BUTTON_LEFT => BUTTON_LEFT,
+            BUTTON_RIGHT => BUTTON_RIGHT,
             VGA_VSYNC => VGA_VSYNC,
             VGA_HSYNC => VGA_HSYNC,
             VGA_RED => VGA_RED,

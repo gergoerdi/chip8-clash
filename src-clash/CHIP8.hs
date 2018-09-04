@@ -19,6 +19,10 @@ import Data.Function
           [ PortName "CLK_25MHZ"
           , PortName "RESET"
           , PortName "RX"
+          , PortName "BUTTON_UP"
+          , PortName "BUTTON_DOWN"
+          , PortName "BUTTON_LEFT"
+          , PortName "BUTTON_RIGHT"
           ]
     , t_output = PortProduct ""
           [ PortName "TX"
@@ -28,6 +32,10 @@ import Data.Function
 topEntity
     :: Clock System Source
     -> Reset System Asynchronous
+    -> Signal System Bit
+    -> Signal System Bit
+    -> Signal System Bit
+    -> Signal System Bit
     -> Signal System Bit
     -> ( Signal System Bit
       , ( Signal System Bit
@@ -39,7 +47,7 @@ topEntity
       )
 topEntity = exposeClockReset board
   where
-    board rxIn = (txOut, (vgaVSync, vgaHSync, vgaR, vgaG, vgaB))
+    board rxIn up0 down0 left0 right0 = (txOut, (vgaVSync, vgaHSync, vgaR, vgaG, vgaB))
       where
         txOut = pure low
 
@@ -49,10 +57,30 @@ topEntity = exposeClockReset board
         vgaY' = (chipY =<<) <$> vgaY
         visible = isJust <$> vgaX' .&&. isJust <$> vgaY'
 
-        pixel = pixelAt <$> vgaX' <*> vgaY'
+        button raw = isRising maxBound $ fmap (fromMaybe False) . debounce d16 $ bitToBool <$> raw
+
+        up = button up0
+        down = button down0
+        left = button left0
+        right = button right0
+
+        dx = mux left (-1) $
+             mux right 1 $
+             0
+
+        x0 = register 0 (x0 + dx)
+
+        dy = mux up (-1) $
+             mux down 1 $
+             0
+
+        y0 = register 0 (y0 + dy)
+
+        pixel = pixelAt <$> x0 <*> y0 <*> vgaX' <*> vgaY'
           where
-            pixelAt (Just x) (Just y) = odd x == odd y
-            pixelAt _ _ = False
+            pixelAt x0 y0 mx my = case (,) <$> mx <*> my of
+                Just (x, y) -> x == x0 && y == y0
+                _ -> False
 
         vgaR = monochrome <$> pixel
         vgaG = monochrome <$> pixel
