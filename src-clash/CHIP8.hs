@@ -6,8 +6,9 @@ import Cactus.Clash.Util
 import Cactus.Clash.SerialTX
 import Cactus.Clash.SerialRX
 import Cactus.Clash.VGA
+import Cactus.Clash.PS2
 import Data.Word
-import Data.Maybe (fromMaybe, isJust)
+import Data.Maybe (fromMaybe, isJust, fromJust)
 import Control.Monad (guard)
 import Data.Function
 
@@ -19,6 +20,8 @@ import Data.Function
           [ PortName "CLK_25MHZ"
           , PortName "RESET"
           , PortName "RX"
+          , PortName "PS2_CLK"
+          , PortName "PS2_DATA"
           , PortName "BUTTON_UP"
           , PortName "BUTTON_DOWN"
           , PortName "BUTTON_LEFT"
@@ -37,6 +40,8 @@ topEntity
     -> Signal System Bit
     -> Signal System Bit
     -> Signal System Bit
+    -> Signal System Bit
+    -> Signal System Bit
     -> ( Signal System Bit
       , ( Signal System Bit
         , Signal System Bit
@@ -47,17 +52,24 @@ topEntity
       )
 topEntity = exposeClockReset board
   where
-    board rxIn up0 down0 left0 right0 = (txOut, (vgaVSync, vgaHSync, vgaR, vgaG, vgaB))
+    board rxIn ps2Clk ps2Data up0 down0 left0 right0 = (txOut, (vgaVSync, vgaHSync, vgaR, vgaG, vgaB))
       where
-        txOut = pure low
-
         VGADriver{..} = vgaDriver vga640x480at60
 
         vgaX' = (chipX =<<) <$> vgaX
         vgaY' = (chipY =<<) <$> vgaY
         visible = isJust <$> vgaX' .&&. isJust <$> vgaY'
 
-        button raw = isRising maxBound $ fmap (fromMaybe False) . debounce d16 $ bitToBool <$> raw
+        ps2 = decodePS2 $ samplePS2 PS2{..}
+
+        -- txOut = pure low
+        -- txOut = tx clkRate serialRate $ enable <$> keyRead <*> key
+
+        (txOut, _, _) = df (hideClockReset fifoDF d1 Nil `seqDF` txDF clkRate serialRate) (fromMaybe 0 <$> ps2) (isJust <$> ps2) (pure True)
+
+        -- (dx, dy) = unbundle $ mealy
+
+        button raw = isRising maxBound $ debounce d16 False $ bitToBool <$> raw
 
         up = button up0
         down = button down0
@@ -102,3 +114,11 @@ clkRate = 25175000
 
 serialRate :: Word32
 serialRate = 9600
+
+txDF
+    :: (HiddenClockReset domain gated synchronous, domain ~ Dom name ps, KnownNat ps)
+    => Word32 -> Word32 -> DataFlow domain Bool Bool Word8 Bit
+txDF clkRate serialRate = liftDF $ \input inValid inReady ->
+    let TXOut{..} = tx clkRate serialRate (enable <$> (inValid .&&. inReady) <*> input)
+        txValid = pure True
+    in (txOut, txValid, txReady)

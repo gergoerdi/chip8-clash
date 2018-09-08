@@ -9,6 +9,9 @@ entity Top is
        RX           : in std_logic;
        TX           : out std_logic;
 
+       PS2CLK_A     : in std_logic;
+       PS2DATA_A    : in std_logic;
+
        BUTTON_UP    : in std_logic;
        BUTTON_DOWN  : in std_logic;
        BUTTON_LEFT  : in std_logic;
@@ -49,6 +52,8 @@ begin
             RESET => RESET,
             RX => RX,
             TX => TX,
+            PS2_CLK => PS2CLK_A,
+            PS2_DATA => PS2DATA_A,
             BUTTON_UP => BUTTON_UP,
             BUTTON_DOWN => BUTTON_DOWN,
             BUTTON_LEFT => BUTTON_LEFT,
