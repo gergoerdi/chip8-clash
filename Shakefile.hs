@@ -8,7 +8,10 @@ clashProject = ClashProject
     , topName = "Top"
     , ipCores = ["ClockMan25"]
     , vhdlSrcs = ["Top"]
-    , clashFlags = ["-i../clash-sandbox/lib/src-clash"]
+    , clashFlags =
+        [ "-i../clash-sandbox/lib/src-clash"
+        , "-Wno-partial-type-signatures"
+        ]
     , shakeDir = "../clash-sandbox/shake"
     }
 

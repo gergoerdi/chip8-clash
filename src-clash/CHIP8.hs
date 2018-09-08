@@ -1,7 +1,8 @@
 {-# LANGUAGE RecordWildCards, TupleSections #-}
+{-# LANGUAGE PartialTypeSignatures #-}
 module CHIP8 where
 
-import Clash.Prelude
+import Clash.Prelude hiding (clkPeriod)
 import Cactus.Clash.Util
 import Cactus.Clash.SerialTX
 import Cactus.Clash.SerialRX
@@ -11,6 +12,10 @@ import Data.Word
 import Data.Maybe (fromMaybe, isJust, fromJust)
 import Control.Monad (guard)
 import Data.Function
+import Data.Proxy
+
+-- 25.175 MHz clock, needed for the VGA mode we use
+type Dom25 = Dom "CLK_25MHZ" 39722
 
 {-# NOINLINE topEntity #-}
 {-# ANN topEntity
@@ -33,21 +38,21 @@ import Data.Function
           ]
     }) #-}
 topEntity
-    :: Clock System Source
-    -> Reset System Asynchronous
-    -> Signal System Bit
-    -> Signal System Bit
-    -> Signal System Bit
-    -> Signal System Bit
-    -> Signal System Bit
-    -> Signal System Bit
-    -> Signal System Bit
-    -> ( Signal System Bit
-      , ( Signal System Bit
-        , Signal System Bit
-        , Signal System (Unsigned 4)
-        , Signal System (Unsigned 4)
-        , Signal System (Unsigned 4)
+    :: Clock Dom25 Source
+    -> Reset _ Asynchronous
+    -> Signal Dom25 Bit
+    -> Signal _ Bit
+    -> Signal _ Bit
+    -> Signal _ Bit
+    -> Signal _ Bit
+    -> Signal _ Bit
+    -> Signal _ Bit
+    -> ( Signal _ Bit
+      , ( Signal _ Bit
+        , Signal _ Bit
+        , Signal _ (Unsigned 4)
+        , Signal _ (Unsigned 4)
+        , Signal _ (Unsigned 4)
         )
       )
 topEntity = exposeClockReset board
@@ -65,7 +70,7 @@ topEntity = exposeClockReset board
         -- txOut = pure low
         -- txOut = tx clkRate serialRate $ enable <$> keyRead <*> key
 
-        (txOut, _, _) = df (hideClockReset fifoDF d1 Nil `seqDF` txDF clkRate serialRate) (fromMaybe 0 <$> ps2) (isJust <$> ps2) (pure True)
+        (txOut, _, _) = df (hideClockReset fifoDF d1 Nil `seqDF` txDF serialRate) (fromMaybe 0 <$> ps2) (isJust <$> ps2) (pure True)
 
         -- (dx, dy) = unbundle $ mealy
 
@@ -109,16 +114,13 @@ chipY :: Unsigned 10 -> Maybe (Unsigned 5)
 chipY y = let (y', _) = unpack . pack $ y :: (Unsigned 7, Unsigned 3)
           in enable (14 <= y' && y' < 14 + 32) (truncateB $ y' - 14)
 
-clkRate :: Word32
-clkRate = 25175000
-
 serialRate :: Word32
 serialRate = 9600
 
 txDF
-    :: (HiddenClockReset domain gated synchronous, domain ~ Dom name ps, KnownNat ps)
-    => Word32 -> Word32 -> DataFlow domain Bool Bool Word8 Bit
-txDF clkRate serialRate = liftDF $ \input inValid inReady ->
-    let TXOut{..} = tx clkRate serialRate (enable <$> (inValid .&&. inReady) <*> input)
+    :: (HiddenClockReset domain gated synchronous, domain ~ Dom s ps, KnownNat ps)
+    => Word32 -> DataFlow domain Bool Bool Word8 Bit
+txDF serialRate = liftDF $ \input inValid inReady ->
+    let TXOut{..} = tx serialRate (enable <$> (inValid .&&. inReady) <*> input)
         txValid = pure True
     in (txOut, txValid, txReady)
