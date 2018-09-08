@@ -1,5 +1,6 @@
 {-# LANGUAGE RecordWildCards, TupleSections #-}
 {-# LANGUAGE PartialTypeSignatures #-}
+{-# LANGUAGE ApplicativeDo #-}
 module CHIP8 where
 
 import Clash.Prelude hiding (clkPeriod)
@@ -27,10 +28,6 @@ type Dom25 = Dom "CLK_25MHZ" (1000000000000 `Div` 25175000)
           , PortName "RX"
           , PortName "PS2_CLK"
           , PortName "PS2_DATA"
-          , PortName "BUTTON_UP"
-          , PortName "BUTTON_DOWN"
-          , PortName "BUTTON_LEFT"
-          , PortName "BUTTON_RIGHT"
           ]
     , t_output = PortProduct ""
           [ PortName "TX"
@@ -39,25 +36,21 @@ type Dom25 = Dom "CLK_25MHZ" (1000000000000 `Div` 25175000)
     }) #-}
 topEntity
     :: Clock Dom25 Source
-    -> Reset _ Asynchronous
+    -> Reset Dom25 Asynchronous
     -> Signal Dom25 Bit
-    -> Signal _ Bit
-    -> Signal _ Bit
-    -> Signal _ Bit
-    -> Signal _ Bit
-    -> Signal _ Bit
-    -> Signal _ Bit
-    -> ( Signal _ Bit
-      , ( Signal _ Bit
-        , Signal _ Bit
-        , Signal _ (Unsigned 4)
-        , Signal _ (Unsigned 4)
-        , Signal _ (Unsigned 4)
+    -> Signal Dom25 Bit
+    -> Signal Dom25 Bit
+    -> ( Signal Dom25 Bit
+      , ( Signal Dom25 Bit
+        , Signal Dom25 Bit
+        , Signal Dom25 (Unsigned 4)
+        , Signal Dom25 (Unsigned 4)
+        , Signal Dom25 (Unsigned 4)
         )
       )
 topEntity = exposeClockReset board
   where
-    board rxIn ps2Clk ps2Data up0 down0 left0 right0 = (txOut, (vgaVSync, vgaHSync, vgaR, vgaG, vgaB))
+    board rxIn ps2Clk ps2Data = (txOut, (vgaVSync, vgaHSync, vgaR, vgaG, vgaB))
       where
         VGADriver{..} = vgaDriver vga640x480at60
 
@@ -67,30 +60,18 @@ topEntity = exposeClockReset board
 
         ps2 = decodePS2 $ samplePS2 PS2{..}
 
-        -- txOut = pure low
-        -- txOut = tx clkRate serialRate $ enable <$> keyRead <*> key
+        txOut = pure low
 
-        (txOut, _, _) = df (hideClockReset fifoDF d1 Nil `seqDF` txDF serialRate) (fromMaybe 0 <$> ps2) (isJust <$> ps2) (pure True)
-
-        -- (dx, dy) = unbundle $ mealy
-
-        button raw = isRising maxBound $ debounce d16 False $ bitToBool <$> raw
-
-        up = button up0
-        down = button down0
-        left = button left0
-        right = button right0
-
-        dx = mux left (-1) $
-             mux right 1 $
-             0
+        (dx, dy) = unbundle $ do
+            key <- parseScanCode ps2
+            pure $ case key of
+                Just (ScanCode KeyPress 0xe075) -> (0, -1) -- up
+                Just (ScanCode KeyPress 0xe072) -> (0, 1)  -- down
+                Just (ScanCode KeyPress 0xe06b) -> (-1, 0) -- left
+                Just (ScanCode KeyPress 0xe074) -> (1, 0)  -- right
+                _ -> (0, 0)
 
         x0 = register 0 (x0 + dx)
-
-        dy = mux up (-1) $
-             mux down 1 $
-             0
-
         y0 = register 0 (y0 + dy)
 
         pixel = pixelAt <$> x0 <*> y0 <*> vgaX' <*> vgaY'
@@ -116,11 +97,3 @@ chipY y = let (y', _) = unpack . pack $ y :: (Unsigned 7, Unsigned 3)
 
 serialRate :: Word32
 serialRate = 9600
-
-txDF
-    :: (HiddenClockReset domain gated synchronous, domain ~ Dom s ps, KnownNat ps)
-    => Word32 -> DataFlow domain Bool Bool Word8 Bit
-txDF serialRate = liftDF $ \input inValid inReady ->
-    let TXOut{..} = tx serialRate (enable <$> (inValid .&&. inReady) <*> input)
-        txValid = pure True
-    in (txOut, txValid, txReady)

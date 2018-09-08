@@ -12,11 +12,6 @@ entity Top is
        PS2CLK_A     : in std_logic;
        PS2DATA_A    : in std_logic;
 
-       BUTTON_UP    : in std_logic;
-       BUTTON_DOWN  : in std_logic;
-       BUTTON_LEFT  : in std_logic;
-       BUTTON_RIGHT : in std_logic;
-
        VGA_VSYNC    : out std_logic;
        VGA_HSYNC    : out std_logic;
        VGA_RED      : out unsigned(3 downto 0);
@@ -54,10 +49,6 @@ begin
             TX => TX,
             PS2_CLK => PS2CLK_A,
             PS2_DATA => PS2DATA_A,
-            BUTTON_UP => BUTTON_UP,
-            BUTTON_DOWN => BUTTON_DOWN,
-            BUTTON_LEFT => BUTTON_LEFT,
-            BUTTON_RIGHT => BUTTON_RIGHT,
             VGA_VSYNC => VGA_VSYNC,
             VGA_HSYNC => VGA_HSYNC,
             VGA_RED => VGA_RED,
