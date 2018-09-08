@@ -15,7 +15,8 @@ import Control.Monad (guard)
 import Data.Function
 import Data.Proxy
 
--- 25.175 MHz clock, needed for the VGA mode we use
+-- | 25.175 MHz clock, needed for the VGA mode we use.
+-- CLaSH requires the clock period to be specified in picoseconds.
 type Dom25 = Dom "CLK_25MHZ" (1000000000000 `Div` 25175000)
 
 {-# NOINLINE topEntity #-}
@@ -52,15 +53,10 @@ topEntity = exposeClockReset board
   where
     board rxIn ps2Clk ps2Data = (txOut, (vgaVSync, vgaHSync, vgaR, vgaG, vgaB))
       where
-        VGADriver{..} = vgaDriver vga640x480at60
-
-        vgaX' = (chipX =<<) <$> vgaX
-        vgaY' = (chipY =<<) <$> vgaY
-        visible = isJust <$> vgaX' .&&. isJust <$> vgaY'
-
-        ps2 = decodePS2 $ samplePS2 PS2{..}
-
         txOut = pure low
+
+        VGADriver{..} = vgaDriver vga640x480at60
+        ps2 = decodePS2 $ samplePS2 PS2{..}
 
         (dx, dy) = unbundle $ do
             key <- parseScanCode ps2
@@ -71,13 +67,13 @@ topEntity = exposeClockReset board
                 Just (ScanCode KeyPress 0xe074) -> (1, 0)  -- right
                 _ -> (0, 0)
 
-        x0 = register 0 (x0 + dx)
-        y0 = register 0 (y0 + dy)
-
-        pixel = pixelAt <$> x0 <*> y0 <*> vgaX' <*> vgaY'
-          where
-            pixelAt x0 y0 mx my = case (,) <$> mx <*> my of
-                Just (x, y) -> x == x0 && y == y0
+        pixel = do
+            x <- fix $ register 0 . (+ dx)
+            y <- fix $ register 0 . (+ dy)
+            x0 <- (chipX =<<) <$> vgaX
+            y0 <- (chipY =<<) <$> vgaY
+            pure $ case (,) <$> x0 <*> y0 of
+                Just (x0, y0) -> (x0, y0) == (x, y)
                 _ -> False
 
         vgaR = monochrome <$> pixel
