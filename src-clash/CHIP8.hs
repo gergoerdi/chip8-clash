@@ -15,7 +15,7 @@ import Data.Function
 import Data.Proxy
 
 -- 25.175 MHz clock, needed for the VGA mode we use
-type Dom25 = Dom "CLK_25MHZ" 39722
+type Dom25 = Dom "CLK_25MHZ" (1000000000000 `Div` 25175000)
 
 {-# NOINLINE topEntity #-}
 {-# ANN topEntity
