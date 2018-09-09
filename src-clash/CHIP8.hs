@@ -17,7 +17,7 @@ import Data.Proxy
 
 -- | 25.175 MHz clock, needed for the VGA mode we use.
 -- CLaSH requires the clock period to be specified in picoseconds.
-type Dom25 = Dom "CLK_25MHZ" (1000000000000 `Div` 25175000)
+type Dom25 = Dom "CLK_25MHZ" (FromHz 25175000)
 
 {-# NOINLINE topEntity #-}
 {-# ANN topEntity
