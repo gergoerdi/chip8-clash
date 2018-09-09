@@ -2,16 +2,15 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE DataKinds #-}
 module SDLIO.Event
-    ( KeypadState
-    , UserEvent(..)
+    ( UserEvent(..)
     , userEvent
     ) where
+
+import SDLIO.Types
 
 import SDL
 import Clash.Sized.Vector as V
 import Clash.Sized.Index
-
-type KeypadState = Vec 16 Bool
 
 data UserEvent
     = KeypadEvent Bool (Index 16)
