@@ -10,6 +10,9 @@ import SDLIO.Event
 import SDLIO.Video
 import SDLIO.Memory
 
+import Cactus.Clash.CPU
+import Control.Monad.State hiding (state)
+
 import SDL hiding (get)
 import Foreign.C.Types
 
@@ -18,12 +21,6 @@ import Data.IORef
 import Data.Word
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Foldable (traverse_)
-
-import Control.Monad.State hiding (state)
-import Control.Monad.Writer
-import Control.Monad.RWS
-import Control.Monad.Cont
-import Data.Monoid
 
 import Clash.Class.BitPack
 import Clash.Sized.Index
@@ -115,23 +112,6 @@ defaultOut CPUState{..} = CPUOut{..}
     cpuOutVideo = RAMAddr minBound Nothing
     cpuOutMem = RAMAddr cpuPC Nothing
 
-newtype CPU i s o r a = CPU{ unCPU :: ContT r (RWS i (Endo o) s) a }
-    deriving (Functor, Applicative, Monad, MonadState s)
-
-output :: (o -> o) -> CPU i s o r ()
-output = CPU . lift . tell . Endo
-
-input :: CPU i s o r i
-input = CPU $ lift ask
-
-runCPU :: (s -> o) -> CPU i s o () () -> (i -> State s o)
-runCPU mkDef cpu inp = do
-    s <- get
-    let (s', f) = execRWS (runContT (unCPU cpu) pure) inp s
-    put s'
-    def <- gets mkDef
-    return $ appEndo f def
-
 cpu :: CPUIn -> State CPUState CPUOut
 cpu = runCPU defaultOut $ do
     CPUIn{..} <- input
@@ -160,7 +140,7 @@ cpu = runCPU defaultOut $ do
                     case op of
                         WaitKey -> goto WaitForKey
                         FlipPixel xy -> do
-                            output $ \out -> out
+                            tell $ \out -> out
                                 { cpuOutVideo = RAMAddr xy Nothing
                                 }
                             goto WaitForVideo
@@ -168,11 +148,23 @@ cpu = runCPU defaultOut $ do
         WaitForVideo -> do
             case cpuIR of
                 FlipPixel xy -> do
-                    output $ \out -> out
+                    tell $ \out -> out
                         { cpuOutVideo = RAMAddr xy $ Just $ not cpuInVideoRead
                         }
                 _ -> pure ()
             goto Exec
+
+stateful :: (MonadIO m) => s -> (i -> State s o) -> IO (m i -> (o -> m a) -> m a)
+stateful s0 step = do
+    state <- newIORef s0
+    return $ \mkInput applyOutput -> do
+        inp <- mkInput
+        out <- liftIO $ do
+            s <- readIORef state
+            let (out, s') = runState (step inp) s
+            writeIORef state s'
+            return out
+        applyOutput out
 
 main :: IO ()
 main = withMainWindow $ \render -> do
@@ -181,16 +173,13 @@ main = withMainWindow $ \render -> do
     framebuf <- mkMemory (minBound, maxBound) [] False
     ram <- mkMemory (minBound, maxBound) prog 0
 
-    let run key = do
+    let mkInput key = do
             cpuInKeyEvent <- return key
             cpuInMemRead <- readData ram
             cpuInVideoRead <- readData framebuf
-            let cpuIn = CPUIn{..}
+            return CPUIn{..}
 
-            s <- readIORef cpuState
-            let (CPUOut{..}, s') = runState (cpu cpuIn) s
-            writeIORef cpuState s'
-
+        applyOutput CPUOut{..} = do
             case cpuOutVideo of
                 RAMAddr addr val -> do
                     latchAddress framebuf addr
@@ -200,6 +189,8 @@ main = withMainWindow $ \render -> do
                     latchAddress ram addr
                     traverse_ (writeData ram addr) w
 
+    stepCPU <- stateful initialState cpu
+
     (`runContT` return) $ callCC $ \exit -> fix $ \loop -> do
     before <- ticks
     events <- pollEvents
@@ -207,9 +198,8 @@ main = withMainWindow $ \render -> do
         Quit -> exit ()
         KeypadEvent pressed key -> return (pressed, key)
 
-    liftIO $ do
-      run Nothing
-      mapM_ (run . Just) keyEvents
+    let run key = stepCPU (mkInput key) applyOutput
+    liftIO $ mapM_ run (Nothing : map Just keyEvents)
 
     render $ memBuf framebuf
 
