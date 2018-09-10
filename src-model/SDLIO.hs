@@ -1,12 +1,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE DataKinds, TypeApplications #-}
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts, MultiParamTypeClasses #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Main where
 
 import SDLIO.Types
 import SDLIO.Event
 import SDLIO.Video
+import SDLIO.Memory
 
 import SDL hiding (get)
 import Foreign.C.Types
@@ -14,11 +16,13 @@ import Foreign.C.Types
 import Control.Monad.Cont
 import Data.IORef
 import Data.Word
-import Data.Maybe (catMaybes)
+import Data.Maybe (catMaybes, fromMaybe)
 import Data.Foldable (traverse_)
 
 import Control.Monad.State hiding (state)
 import Control.Monad.Writer
+import Control.Monad.RWS
+import Control.Monad.Cont
 import Data.Monoid
 
 import Clash.Class.BitPack
@@ -55,6 +59,9 @@ decode w = case (op, x, y) of
 prog :: [RAMWord]
 prog = map encode
     [ FlipPixel (10, 10)
+    , FlipPixel (8, 10)
+    , FlipPixel (6, 10)
+    , FlipPixel (4, 10)
     , WaitKey
     , FlipPixel (10, 10)
     , FlipPixel (11, 11)
@@ -83,83 +90,115 @@ data CPUOut = CPUOut
     deriving (Show)
 
 data Microstate
-    = Exec
-    | DrawCursor
+    = Init
+    | Exec
+    | WaitForVideo
+    | WaitForKey
     | Halt
 
 data CPUState = CPUState
-    { cursorX :: VidX
-    , cursorY :: VidY
-    , state :: Microstate
+    { cpuPC :: Addr
+    , cpuIR :: Opcode
+    , cpuState :: Microstate
     }
 
 initialState :: CPUState
 initialState = CPUState
-    { cursorX = 32
-    , cursorY = 16
-    , state = Exec
+    { cpuPC = 0
+    , cpuIR = End
+    , cpuState = Init
     }
 
 defaultOut :: CPUState -> CPUOut
 defaultOut CPUState{..} = CPUOut{..}
   where
-    cpuOutVideo = RAMAddr (cursorX, cursorY) Nothing
-    cpuOutMem = RAMAddr 0 Nothing
+    cpuOutVideo = RAMAddr minBound Nothing
+    cpuOutMem = RAMAddr cpuPC Nothing
+
+newtype CPU i s o r a = CPU{ unCPU :: ContT r (RWS i (Endo o) s) a }
+    deriving (Functor, Applicative, Monad, MonadState s)
+
+output :: (o -> o) -> CPU i s o r ()
+output = CPU . lift . tell . Endo
+
+input :: CPU i s o r i
+input = CPU $ lift ask
+
+runCPU :: (s -> o) -> CPU i s o () () -> (i -> State s o)
+runCPU mkDef cpu inp = do
+    s <- get
+    let (s', f) = execRWS (runContT (unCPU cpu) pure) inp s
+    put s'
+    def <- gets mkDef
+    return $ appEndo f def
 
 cpu :: CPUIn -> State CPUState CPUOut
-cpu CPUIn{..} = (finish =<<) $ execWriterT $ do
-    CPUState{..} <- get
-    case state of
-        Halt -> return ()
-        Exec -> do
-            let dxy = case cpuInKeyEvent of
-                    Just (True, 0x07) -> Just (-1, 0)
-                    Just (True, 0x09) -> Just (1, 0)
-                    Just (True, 0x05) -> Just (0, -1)
-                    Just (True, 0x08) -> Just (0, 1)
-                    _ -> Nothing
-            forM_ dxy $ \(dx, dy) -> do
-                let x' = cursorX + dx
-                    y' = cursorY + dy
-                modify $ \s -> s{ cursorX = x', cursorY = y' }
-                tell $ Endo $ \out -> out
-                    { cpuOutVideo = RAMAddr (cursorX, cursorY) (Just False)
-                    }
-                goto DrawCursor
-        DrawCursor -> do
-            tell $ Endo $ \out -> out
-                { cpuOutVideo = RAMAddr (cursorX, cursorY) (Just True)
-                }
-            goto Exec
-  where
-    goto state = modify $ \s -> s{ state = state }
+cpu = runCPU defaultOut $ do
+    CPUIn{..} <- input
 
-    finish f = gets $ appEndo f . defaultOut
+    let goto state = modify $ \s -> s{ cpuState = state }
+        fetch = do
+            modify $ \s -> s{ cpuPC = succ $ cpuPC s }
+            return $ decode cpuInMemRead
+
+    CPUState{..} <- get
+
+    case cpuState of
+        Init -> goto Exec
+        Halt -> return ()
+        WaitForKey -> do
+            case cpuInKeyEvent of
+                Just (True, key) -> goto Exec
+                _ -> return ()
+        Exec -> do
+            op <- fetch
+            case op of
+                Nothing -> do
+                    goto Halt
+                Just op -> do
+                    modify $ \s -> s{ cpuIR = op }
+                    case op of
+                        WaitKey -> goto WaitForKey
+                        FlipPixel xy -> do
+                            output $ \out -> out
+                                { cpuOutVideo = RAMAddr xy Nothing
+                                }
+                            goto WaitForVideo
+                        End -> goto Halt
+        WaitForVideo -> do
+            case cpuIR of
+                FlipPixel xy -> do
+                    output $ \out -> out
+                        { cpuOutVideo = RAMAddr xy $ Just $ not cpuInVideoRead
+                        }
+                _ -> pure ()
+            goto Exec
 
 main :: IO ()
 main = withMainWindow $ \render -> do
     cpuState <- newIORef initialState
 
-    framebuf <- newArray (minBound, maxBound) False
-    ram <- newListArray @IOArray (minBound, maxBound) (prog ++ repeat 0)
-    ramA <- newIORef Nothing
+    framebuf <- mkMemory (minBound, maxBound) [] False
+    ram <- mkMemory (minBound, maxBound) prog 0
 
     let run key = do
+            cpuInKeyEvent <- return key
+            cpuInMemRead <- readData ram
+            cpuInVideoRead <- readData framebuf
+            let cpuIn = CPUIn{..}
+
             s <- readIORef cpuState
-            a <- readIORef ramA
-            cpuInMemRead <- maybe (return $ error "X") (readArray ram) a
-            let cpuInKeyEvent = key
-                cpuInVideoRead = False
-                cpuIn = CPUIn{..}
-            let (out@CPUOut{..}, s') = runState (cpu cpuIn) s
+            let (CPUOut{..}, s') = runState (cpu cpuIn) s
             writeIORef cpuState s'
+
             case cpuOutVideo of
-                RAMAddr addr (Just val) -> writeArray framebuf addr val
-                _ -> return ()
+                RAMAddr addr val -> do
+                    latchAddress framebuf addr
+                    traverse_ (writeData framebuf addr) val
             case cpuOutMem of
                 RAMAddr addr w -> do
-                    writeIORef ramA $ Just addr
-                    traverse_ (writeArray ram addr) w
+                    latchAddress ram addr
+                    traverse_ (writeData ram addr) w
 
     (`runContT` return) $ callCC $ \exit -> fix $ \loop -> do
     before <- ticks
@@ -172,7 +211,7 @@ main = withMainWindow $ \render -> do
       run Nothing
       mapM_ (run . Just) keyEvents
 
-    render framebuf
+    render $ memBuf framebuf
 
     -- after <- ticks
     -- let elapsed = after - before
