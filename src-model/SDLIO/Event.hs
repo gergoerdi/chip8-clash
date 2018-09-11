@@ -6,9 +6,9 @@ module SDLIO.Event
     , userEvent
     ) where
 
-import SDLIO.Types
-
+import CHIP8.Types
 import SDL
+
 import Clash.Sized.Vector as V
 import Clash.Sized.Index
 

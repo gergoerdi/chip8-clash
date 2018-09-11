@@ -5,7 +5,7 @@ module SDLIO.Video
     , withMainWindow
     ) where
 
-import SDLIO.Types
+import CHIP8.Types
 
 import SDL hiding (get)
 import Foreign.C.Types

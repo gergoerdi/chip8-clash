@@ -3,7 +3,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 module SDLIO.CPU where
 
-import SDLIO.Types
+import CHIP8.Types
 
 import Cactus.Clash.CPU
 import Control.Monad.State hiding (state)
