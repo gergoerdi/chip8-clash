@@ -2,7 +2,8 @@
 {-# LANGUAGE RecordWildCards #-}
 module Main where
 
-import SDLIO.Types
+import CHIP8.Types
+
 import SDLIO.CPU
 import SDLIO.Event
 import SDLIO.Video
