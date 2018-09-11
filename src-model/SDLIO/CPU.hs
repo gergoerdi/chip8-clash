@@ -81,12 +81,6 @@ defaultOut CPUState{..} = CPUOut{..}
 cpu :: CPUIn -> State CPUState CPUOut
 cpu = runCPU defaultOut $ do
     CPUIn{..} <- input
-
-    let goto state = modify $ \s -> s{ cpuState = state }
-        fetch = do
-            modify $ \s -> s{ cpuPC = succ $ cpuPC s }
-            return $ decode cpuInMemRead
-
     CPUState{..} <- get
 
     case cpuState of
@@ -106,16 +100,20 @@ cpu = runCPU defaultOut $ do
                     case op of
                         WaitKey -> goto WaitForKey
                         FlipPixel xy -> do
-                            tell $ \out -> out
-                                { cpuOutVideo = RAMAddr xy Nothing
-                                }
+                            tellVideo xy Nothing
                             goto WaitForVideo
                         End -> goto Halt
         WaitForVideo -> do
             case cpuIR of
-                FlipPixel xy -> do
-                    tell $ \out -> out
-                        { cpuOutVideo = RAMAddr xy $ Just $ not cpuInVideoRead
-                        }
+                FlipPixel xy -> tellVideo xy . Just $ not cpuInVideoRead
                 _ -> pure ()
             goto Exec
+  where
+    goto state = modify $ \s -> s{ cpuState = state }
+
+    tellVideo xy b = tell $ \out -> out{ cpuOutVideo = RAMAddr xy b }
+
+    fetch = do
+        modify $ \s -> s{ cpuPC = succ $ cpuPC s }
+        CPUIn{..} <- input
+        return $ decode cpuInMemRead
