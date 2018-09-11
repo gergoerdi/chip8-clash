@@ -3,6 +3,9 @@
 {-# LANGUAGE ApplicativeDo #-}
 module CHIP8 where
 
+import CHIP8.Types
+import CHIP8.Video
+
 import Clash.Prelude hiding (clkPeriod)
 import Cactus.Clash.Util
 import Cactus.Clash.SerialTX
@@ -13,7 +16,6 @@ import Data.Word
 import Data.Maybe (fromMaybe, isJust, fromJust)
 import Control.Monad (guard)
 import Data.Function
-import Data.Proxy
 
 -- | 25.175 MHz clock, needed for the VGA mode we use.
 -- CLaSH requires the clock period to be specified in picoseconds.
@@ -90,14 +92,6 @@ topEntity = exposeClockReset board
 
 monochrome :: (Bounded a) => Bool -> a
 monochrome b = if b then maxBound else minBound
-
-chipX :: Unsigned 10 -> Maybe (Unsigned 6)
-chipX x = let (x', _) = unpack . pack $ x :: (Unsigned 7, Unsigned 3)
-          in enable (8 <= x' && x' < 8 + 64) (truncateB $ x' - 8)
-
-chipY :: Unsigned 10 -> Maybe (Unsigned 5)
-chipY y = let (y', _) = unpack . pack $ y :: (Unsigned 7, Unsigned 3)
-          in enable (14 <= y' && y' < 14 + 32) (truncateB $ y' - 14)
 
 serialRate :: Word32
 serialRate = 9600
