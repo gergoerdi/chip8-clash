@@ -9,4 +9,4 @@ uploaded separately to https://github.com/gergoerdi/clash-sandbox
 
 The target platform is Papilio Pro with the Arcade mega-wing:
 * http://papilio.cc/index.php?n=Papilio.PapilioPro
-* http://papilio.cc/index.php?n=Papilio.ArcadeStartMegaWing
+* http://papilio.cc/index.php?n=Papilio.ArcadeMegaWing
