@@ -68,10 +68,10 @@ topEntity = exposeClockReset board
         (dx, dy) = unbundle $ do
             key <- parseScanCode ps2
             pure $ case key of
-                Just (ScanCode KeyPress 0xe075) -> (0, -1) -- up
-                Just (ScanCode KeyPress 0xe072) -> (0, 1)  -- down
-                Just (ScanCode KeyPress 0xe06b) -> (-1, 0) -- left
-                Just (ScanCode KeyPress 0xe074) -> (1, 0)  -- right
+                Just (ScanCode KeyPress True 0x75) -> (0, -1) -- up
+                Just (ScanCode KeyPress True 0x72) -> (0, 1)  -- down
+                Just (ScanCode KeyPress True 0x6b) -> (-1, 0) -- left
+                Just (ScanCode KeyPress True 0x74) -> (1, 0)  -- right
                 _ -> (0, 0)
 
         fbWrite = do
