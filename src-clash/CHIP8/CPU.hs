@@ -130,21 +130,21 @@ cpu = do
         writeMem (ptr + fromIntegral reg) val
         goto $ StoreReg reg
 
-    popAddr = modify $ \s@CPUState{..} -> let sp' = prevIdx sp in s
+    popPC = modify $ \s@CPUState{..} -> let sp' = prevIdx sp in s
         { sp = sp'
-        , ptr = stack !! sp'
+        , pc = stack !! sp'
         }
 
-    pushAddr = modify $ \s@CPUState{..} -> s
+    pushPC = modify $ \s@CPUState{..} -> s
         { sp = nextIdx sp
-        , stack = replace sp ptr stack
+        , stack = replace sp pc stack
         }
 
     jump addr = modify $ \s -> s{ pc = addr }
 
     skip = do
-        ptr <- gets ptr
-        jump $ ptr + 2
+        pc <- gets pc
+        jump $ pc + 2
 
     exec = do
         CPUIn{..} <- input
@@ -152,13 +152,13 @@ cpu = do
         case decode opHi opLo of
             ClearScreen -> clearFB minBound
             Ret -> do
-                popAddr
+                popPC
             -- Sys n -> do
             --     error $ unwords ["Unimplemented: SYS", show n]
             Jump addr -> do
                 jump addr
             Call addr -> do
-                pushAddr
+                pushPC
                 jump addr
             SkipEqImm regX imm skipWhen -> do
                 x <- getReg regX
