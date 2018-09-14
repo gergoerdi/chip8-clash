@@ -5,8 +5,9 @@ module Main where
 import Clash.Prelude
 
 import CHIP8.Types
+import CHIP8.CPU
+import Cactus.Clash.CPU
 
-import SDLIO.CPU
 import SDLIO.Event
 import SDLIO.Video
 import SDLIO.Memory
@@ -19,21 +20,9 @@ import Data.IORef
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Foldable (traverse_)
 import qualified Data.List as L
+import qualified Data.ByteString as BS
 
-prog :: [RAMWord]
-prog = fmap encode
-    [ FlipPixel (10, 10)
-    , FlipPixel (8, 10)
-    , FlipPixel (6, 10)
-    , FlipPixel (4, 10)
-    , WaitKey
-    , FlipPixel (10, 10)
-    , FlipPixel (11, 11)
-    , WaitKey
-    , FlipPixel (11, 11)
-    , WaitKey
-    , End
-    ]
+import Text.Printf
 
 stateful :: (MonadIO m) => s -> (i -> State s o) -> IO (m i -> (o -> m a) -> m a)
 stateful s0 step = do
@@ -48,29 +37,33 @@ stateful s0 step = do
         applyOutput out
 
 main :: IO ()
-main = withMainWindow $ \render -> do
-    cpuState <- newIORef initialState
+main = do
+    prog <- BS.unpack <$> BS.readFile "test.ch8"
 
     framebuf <- mkMemory (minBound, maxBound) [] low
-    ram <- mkMemory (minBound, maxBound) prog 0
+    ram <- mkMemory (minBound, maxBound) (L.replicate 0x200 0 <> prog) 0
+    keys <- newIORef $ pure False
 
-    let mkInput key = do
-            cpuInKeyEvent <- return key
-            cpuInMemRead <- readData ram
-            cpuInVideoRead <- readData framebuf
+    withMainWindow $ \render -> do
+    let mkInput vblank key = do
+            liftIO $ modifyIORef keys $ maybe id applyKeyEvent key
+            cpuInKeys <- readIORef keys
+            cpuInMem <- readData ram
+            cpuInFB <- readData framebuf
+            let cpuInKeyEvent = key
+                cpuInVBlank = vblank
             return CPUIn{..}
 
         applyOutput CPUOut{..} = do
-            case cpuOutVideo of
-                RAMAddr addr val -> do
-                    latchAddress framebuf addr
-                    traverse_ (writeData framebuf addr) val
-            case cpuOutMem of
-                RAMAddr addr w -> do
-                    latchAddress ram addr
-                    traverse_ (writeData ram addr) w
+            latchAddress framebuf $ cpuOutFBAddr
+            traverse_ (writeData framebuf cpuOutFBAddr) cpuOutFBWrite
 
-    stepCPU <- stateful initialState cpu
+            -- liftIO $ printf "0x%04x\n" (fromIntegral cpuOutMemAddr :: Int)
+            latchAddress ram $ cpuOutMemAddr
+            traverse_ (writeData ram cpuOutMemAddr) cpuOutMemWrite
+            pure ()
+
+    stepCPU <- stateful initState $ runCPU defaultOut cpu
 
     (`runContT` return) $ callCC $ \exit -> fix $ \loop -> do
     before <- ticks
@@ -79,13 +72,19 @@ main = withMainWindow $ \render -> do
         Quit -> exit ()
         KeypadEvent pressed key -> return (pressed, key)
 
-    let run key = stepCPU (mkInput key) applyOutput
-    liftIO $ mapM_ run (Nothing : fmap Just keyEvents)
+    let run vblank key = stepCPU (mkInput vblank key) applyOutput
+    liftIO $ run True Nothing
+    liftIO $ mapM_ (run False . Just) keyEvents
 
     render $ memBuf framebuf
 
-    -- after <- ticks
-    -- let elapsed = after - before
-    -- when (elapsed < 20) $ do
-    --     liftIO . threadDelay $ fromIntegral $ 20 - elapsed
+    fix $ \inner -> do
+        after <- ticks
+        let elapsed = after - before
+        when (elapsed < 20) $ do
+            liftIO $ run False Nothing
+            inner
     loop
+
+applyKeyEvent :: (Bool, Key) -> KeypadState -> KeypadState
+applyKeyEvent (pressed, key) = replace key pressed
