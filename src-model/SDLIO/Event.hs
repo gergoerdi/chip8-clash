@@ -6,6 +6,8 @@ module SDLIO.Event
     , userEvent
     ) where
 
+import Clash.Prelude
+
 import CHIP8.Types
 import SDL
 

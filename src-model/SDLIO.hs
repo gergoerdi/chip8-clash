@@ -2,6 +2,8 @@
 {-# LANGUAGE RecordWildCards #-}
 module Main where
 
+import Clash.Prelude
+
 import CHIP8.Types
 
 import SDLIO.CPU
@@ -16,9 +18,10 @@ import Control.Monad.Cont
 import Data.IORef
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Foldable (traverse_)
+import qualified Data.List as L
 
 prog :: [RAMWord]
-prog = map encode
+prog = fmap encode
     [ FlipPixel (10, 10)
     , FlipPixel (8, 10)
     , FlipPixel (6, 10)
@@ -48,7 +51,7 @@ main :: IO ()
 main = withMainWindow $ \render -> do
     cpuState <- newIORef initialState
 
-    framebuf <- mkMemory (minBound, maxBound) [] False
+    framebuf <- mkMemory (minBound, maxBound) [] low
     ram <- mkMemory (minBound, maxBound) prog 0
 
     let mkInput key = do
@@ -77,7 +80,7 @@ main = withMainWindow $ \render -> do
         KeypadEvent pressed key -> return (pressed, key)
 
     let run key = stepCPU (mkInput key) applyOutput
-    liftIO $ mapM_ run (Nothing : map Just keyEvents)
+    liftIO $ mapM_ run (Nothing : fmap Just keyEvents)
 
     render $ memBuf framebuf
 
