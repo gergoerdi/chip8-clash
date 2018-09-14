@@ -5,6 +5,8 @@ module SDLIO.Video
     , withMainWindow
     ) where
 
+import Clash.Prelude
+
 import CHIP8.Types
 
 import SDL hiding (get)
@@ -28,7 +30,7 @@ bgColor = V4 90 160 110 maxBound
 fgColor :: Color
 fgColor = V4 0 0 0 maxBound
 
-type FrameBuf = IOArray (VidX, VidY) Bool
+type FrameBuf = IOArray (VidX, VidY) Bit
 
 instance (KnownNat n) => Ix (Unsigned n) where
     range (lo, hi) = [lo..hi]
@@ -42,7 +44,7 @@ renderFrameBuf renderer fb = do
 
     rendererDrawColor renderer $= fgColor
     pixels <- getAssocs fb
-    forM_ pixels $ \((x, y), b) -> when b $ do
+    forM_ pixels $ \((x, y), b) -> when (b == high) $ do
         let x' = fromIntegral x * screenScale
             y' = fromIntegral y * screenScale
         fillRect renderer $ Just $ Rectangle (P $ V2 x' y') (V2 screenScale screenScale)

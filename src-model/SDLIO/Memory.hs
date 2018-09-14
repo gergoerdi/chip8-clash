@@ -6,12 +6,15 @@ module SDLIO.Memory
   , writeData
   ) where
 
+import Clash.Prelude
+
 import Data.IORef
 import Data.Maybe (catMaybes, fromMaybe)
 import Data.Foldable (traverse_)
 
 import Data.Array.IO
 import Data.Array.MArray
+import qualified Data.List as L
 
 data Memory a d = Memory
     { memAddrReg :: IORef (Maybe a)
@@ -21,7 +24,7 @@ data Memory a d = Memory
 mkMemory :: (Ix a) => (a, a) -> [d] -> d -> IO (Memory a d)
 mkMemory bounds initial def = do
     memAddrReg <- newIORef Nothing
-    memBuf <- newListArray bounds (initial ++ repeat def)
+    memBuf <- newListArray bounds (initial <> L.repeat def)
     return $ Memory{..}
 
 latchAddress :: Memory a d -> a -> IO ()

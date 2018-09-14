@@ -3,6 +3,8 @@
 {-# LANGUAGE FlexibleContexts #-}
 module SDLIO.CPU where
 
+import Clash.Prelude
+
 import CHIP8.Types
 
 import Cactus.Clash.CPU
@@ -37,7 +39,7 @@ decode w = case (op, x, y) of
 data CPUIn = CPUIn
     { cpuInKeyEvent  :: Maybe (Bool, Index 16)
     , cpuInMemRead   :: RAMWord
-    , cpuInVideoRead :: Bool
+    , cpuInVideoRead :: Bit
     }
 
 data RAMAddr addr word = RAMAddr
@@ -48,7 +50,7 @@ data RAMAddr addr word = RAMAddr
 
 data CPUOut = CPUOut
     { cpuOutMem   :: RAMAddr Addr RAMWord
-    , cpuOutVideo :: RAMAddr (VidX, VidY) Bool
+    , cpuOutVideo :: RAMAddr (VidX, VidY) Bit
     }
     deriving (Show)
 
@@ -105,7 +107,7 @@ cpu = runCPU defaultOut $ do
                         End -> goto Halt
         WaitForVideo -> do
             case cpuIR of
-                FlipPixel xy -> tellVideo xy . Just $ not cpuInVideoRead
+                FlipPixel xy -> tellVideo xy . Just $ complement cpuInVideoRead
                 _ -> pure ()
             goto Exec
   where
