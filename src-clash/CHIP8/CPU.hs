@@ -14,6 +14,9 @@ import Data.Word
 import Data.Foldable (for_)
 import Data.Maybe (fromMaybe)
 
+import Debug.Trace
+import Text.Printf
+
 data DrawPhase
     = DrawRead
     | DrawWrite
@@ -97,7 +100,7 @@ cpu = do
         Exec -> do
             modify $ \s -> s
                 { opLo = cpuInMem
-                , pc = succ pc
+                , pc = trace (printf "PC = %04x" (fromIntegral pc :: Word16)) $ succ pc
                 }
             goto Fetch1
             exec
@@ -161,7 +164,7 @@ cpu = do
     exec = do
         CPUIn{..} <- input
         CPUState{opHi, opLo} <- get
-        case decode opHi opLo of
+        case traceShowId $ decode opHi opLo of
             ClearScreen -> clearFB minBound
             Ret -> do
                 popPC
@@ -229,7 +232,7 @@ cpu = do
                 ptr <- gets ptr
                 readMem (ptr + fromIntegral regMax)
                 goto $ LoadReg regMax
-            _ -> return ()
+            op -> errorX $ show op
 
     draw DrawWrite (x, y) row col = do
         CPUIn{..} <- input
