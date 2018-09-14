@@ -218,7 +218,7 @@ cpu = do
     draw DrawWrite (x, y) row col = do
         CPUIn{..} <- input
         let b0 = cpuInFB
-            b = cpuInMem ! col
+            b = cpuInMem ! (7 - col)
             b' = b0 `xor` b
         when (b0 .&. b == high) $ setReg 0x0f 0x01
         writeFB (x + fromIntegral col, y + fromIntegral row) $ b'
