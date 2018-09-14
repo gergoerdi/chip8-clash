@@ -12,6 +12,10 @@ import Cactus.Clash.CPU
 import Control.Monad.State
 import Data.Word
 
+data DrawPhase
+    = DrawRead
+    | DrawWrite
+
 data Phase
     = Init
     | Fetch1
@@ -19,6 +23,7 @@ data Phase
     | StoreReg Reg
     | LoadReg Reg
     | ClearFB (VidX, VidY)
+    | Draw DrawPhase (VidX, VidY) Nybble (Index 8)
 
 succXY :: (Eq a, Bounded a, Enum a, Eq b, Bounded b, Enum b) => (a, b) -> Maybe (a, b)
 succXY (x, y) =
@@ -37,7 +42,8 @@ data CPUState = CPUState
 
 data CPUIn = CPUIn
     { cpuInMem :: Word8
-    , cpuInFB :: Bool
+    , cpuInFB :: Bit
+    , cpuInKeys :: KeypadState
     }
 
 initState :: CPUState
@@ -56,8 +62,16 @@ data CPUOut = CPUOut
     { cpuOutMemAddr :: Addr
     , cpuOutMemWrite :: Maybe Word8
     , cpuOutFBAddr :: (VidX, VidY)
-    , cpuOutFBWrite :: Maybe Bool
+    , cpuOutFBWrite :: Maybe Bit
     }
+
+cpuOut :: CPUState -> CPUOut
+cpuOut CPUState{..} = CPUOut{..}
+  where
+    cpuOutMemAddr = pc
+    cpuOutMemWrite = mzero
+    cpuOutFBAddr = minBound
+    cpuOutFBWrite = mzero
 
 cpu :: CPU CPUIn CPUState CPUOut ()
 cpu = do
@@ -83,11 +97,12 @@ cpu = do
             Just r' -> storeReg r'
         LoadReg r -> loadReg r
         ClearFB xy -> clearFB xy
+        Draw dp xy row col -> draw dp xy row col
   where
     goto ph = modify $ \s -> s{ phase = ph }
 
     clearFB xy = do
-        writeFB xy False
+        writeFB xy low
         goto $ maybe Fetch1 ClearFB $ succXY xy
 
     setReg reg val = modify $ \s -> s{ registers = replace reg val (registers s) }
@@ -97,6 +112,7 @@ cpu = do
     readMem addr = tell $ \out -> out{ cpuOutMemAddr = addr }
 
     writeFB xy val = tell $ \out -> out{ cpuOutFBAddr = xy, cpuOutFBWrite = Just val }
+    readFB xy = tell $ \out -> out{ cpuOutFBAddr = xy, cpuOutFBWrite = Nothing }
 
     loadReg reg = do
         val <- cpuInMem <$> input
@@ -168,8 +184,19 @@ cpu = do
                 x <- getReg 0
                 jump (addr + fromIntegral x)
             -- Randomize regX mask -> do
-            -- DrawSprite regX regY height -> do
-            -- SkipKey regX skipIfPressed -> do
+            DrawSprite regX regY height -> do
+                x <- fromIntegral <$> getReg regX
+                y <- fromIntegral <$> getReg regY
+                let lim = if height == 0 then 15 else height - 1
+                setReg 0xf 0x00
+                -- We draw from bottom to top, right to left. This
+                -- allows using the remaining height/width being 0 as
+                -- a stopping condition.
+                draw DrawRead (x, y) lim maxBound
+            SkipKey regX skipIfPressed -> do
+                key <- fromIntegral <$> getReg regX
+                let isPressed = cpuInKeys !! key
+                when (isPressed == skipIfPressed) skip
             -- WaitKey regX -> do
             -- GetTimer regX -> do
             -- SetTimer regX -> do
@@ -187,6 +214,23 @@ cpu = do
                 readMem (ptr + fromIntegral regMax)
                 goto $ LoadReg regMax
             _ -> return ()
+
+    draw DrawWrite (x, y) row col = do
+        CPUIn{..} <- input
+        let b0 = cpuInFB
+            b = cpuInMem ! col
+            b' = b0 `xor` b
+        when (b0 .&. b == high) $ setReg 0x0f 0x01
+        writeFB (x + fromIntegral col, y + fromIntegral row) $ b'
+        let next = msum [ (row,) <$> predIdx col
+                        , (,maxBound) <$> predIdx row
+                        ]
+        goto $ maybe Fetch1 (uncurry $ Draw DrawRead (x, y)) next
+    draw DrawRead (x, y) row col = do
+        ptr <- gets ptr
+        readFB (x, y + fromIntegral row)
+        readMem $ ptr + fromIntegral row
+        goto $ Draw DrawWrite (x, y) row col
 
 alu :: Fun -> Word8 -> Word8 -> (Word8, Maybe Word8)
 alu fun = case fun of
