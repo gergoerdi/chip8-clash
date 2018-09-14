@@ -12,6 +12,7 @@ import Cactus.Clash.CPU
 import Control.Monad.State
 import Data.Word
 import Data.Foldable (for_)
+import Data.Maybe (fromMaybe)
 
 data DrawPhase
     = DrawRead
@@ -33,6 +34,14 @@ succXY (x, y) =
          , (,minBound) <$> succIdx x
          ]
 
+data CPUIn = CPUIn
+    { cpuInMem :: Word8
+    , cpuInFB :: Bit
+    , cpuInKeys :: KeypadState
+    , cpuInKeyEvent :: Maybe (Bool, Key)
+    , cpuInVBlank :: Bool
+    }
+
 data CPUState = CPUState
     { opHi, opLo :: Word8
     , pc, ptr :: Addr
@@ -40,13 +49,7 @@ data CPUState = CPUState
     , stack :: Vec 24 Addr
     , sp :: Index 24
     , phase :: Phase
-    }
-
-data CPUIn = CPUIn
-    { cpuInMem :: Word8
-    , cpuInFB :: Bit
-    , cpuInKeys :: KeypadState
-    , cpuInKeyEvent :: Maybe (Bool, Key)
+    , timer :: Word8
     }
 
 initState :: CPUState
@@ -59,6 +62,7 @@ initState = CPUState
     , stack = pure 0
     , sp = 0
     , phase = Init
+    , timer = 0
     }
 
 data CPUOut = CPUOut
@@ -80,6 +84,8 @@ cpu :: CPU CPUIn CPUState CPUOut ()
 cpu = do
     CPUIn{..} <- input
     CPUState{..} <- get
+    when cpuInVBlank $ modify $ \s -> s{ timer = fromMaybe 0 $ predIdx timer }
+
     case phase of
         Init -> goto Fetch1
         Fetch1 -> do
@@ -189,7 +195,8 @@ cpu = do
             JumpPlusR0 addr -> do
                 x <- getReg 0
                 jump (addr + fromIntegral x)
-            -- Randomize regX mask -> do
+            Randomize regX mask -> do -- TODO
+                setReg regX mask
             DrawSprite regX regY height -> do
                 x <- fromIntegral <$> getReg regX
                 y <- fromIntegral <$> getReg regY
@@ -204,8 +211,11 @@ cpu = do
                 let isPressed = cpuInKeys !! key
                 when (isPressed == skipIfPressed) skip
             WaitKey regX -> goto $ WaitKeyPress regX
-            -- GetTimer regX -> do
-            -- SetTimer regX -> do
+            GetTimer regX -> do
+                setReg regX =<< gets timer
+            SetTimer regX -> do
+                val <- getReg regX
+                modify $ \s -> s{ timer = val }
             -- SetSound regX -> do
             AddPtr regX -> do
                 x <- getReg regX
@@ -234,7 +244,7 @@ cpu = do
         goto $ maybe Fetch1 (uncurry $ Draw DrawRead (x, y)) next
     draw DrawRead (x, y) row col = do
         ptr <- gets ptr
-        readFB (x, y + fromIntegral row)
+        readFB (x + fromIntegral col, y + fromIntegral row)
         readMem $ ptr + fromIntegral row
         goto $ Draw DrawWrite (x, y) row col
 
