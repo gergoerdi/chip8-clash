@@ -10,7 +10,7 @@ type Addr = Unsigned 12
 type Nybble = Unsigned 4
 type Reg = Index 16
 
-type Key = Unsigned 16
+type Key = Index 16
 type KeypadState = Vec 16 Bool
 
 type VidX = Unsigned 6
