@@ -63,7 +63,7 @@ main = do
             traverse_ (writeData ram cpuOutMemAddr) cpuOutMemWrite
             pure ()
 
-    stepCPU <- stateful initState $ runCPU cpuOut cpu
+    stepCPU <- stateful initState $ runCPU defaultOut cpu
 
     (`runContT` return) $ callCC $ \exit -> fix $ \loop -> do
     before <- ticks

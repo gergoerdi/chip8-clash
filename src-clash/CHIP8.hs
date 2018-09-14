@@ -4,7 +4,9 @@
 module CHIP8 where
 
 import CHIP8.Types
+import CHIP8.CPU
 import CHIP8.Video
+import CHIP8.Keypad
 
 import Clash.Prelude hiding (clkPeriod)
 import Cactus.Clash.Util
@@ -12,6 +14,7 @@ import Cactus.Clash.SerialTX
 import Cactus.Clash.SerialRX
 import Cactus.Clash.VGA
 import Cactus.Clash.PS2
+import Cactus.Clash.CPU
 import Data.Word
 import Data.Maybe (fromMaybe, isJust, fromJust)
 import Control.Monad (guard)
@@ -65,36 +68,48 @@ topEntity = exposeClockReset board
 
         delay1 x = toSignal . delayed (singleton x) . fromSignal
 
-        (dx, dy) = unbundle $ do
-            key <- parseScanCode ps2
-            pure $ case key of
-                Just (ScanCode KeyPress True 0x75) -> (0, -1) -- up
-                Just (ScanCode KeyPress True 0x72) -> (0, 1)  -- down
-                Just (ScanCode KeyPress True 0x6b) -> (-1, 0) -- left
-                Just (ScanCode KeyPress True 0x74) -> (1, 0)  -- right
-                _ -> (0, 0)
+        framebuf r = blockRam (replicate d2048 low) r' w
+          where
+            r' = fbIndex <$> r
+            w = packWrite (fbIndex <$> cpuOutFBAddr <$> cpuOut) (cpuOutFBWrite <$> cpuOut)
 
-        fbWrite = do
-            x <- fix $ register 0 . (+ dx)
-            y <- fix $ register 0 . (+ dy)
-            pure $ Just (fbIndex x y, True)
+        cpuIn = do
+            cpuInFB <- framebuf $ cpuOutFBAddr <$> cpuOut
+            cpuInMem <- unpack <$> blockRamFile d4096 "image.rom" (cpuOutMemAddr <$> cpuOut) memWrite
+            cpuInKeys <- keys
+            cpuInKeyEvent <- keyEvent
+            cpuInVBlank <- delay1 False vgaStartFrame
+            pure CPUIn{..}
+          where
+            (keys, keyEvent) = keypad $ parseScanCode ps2
+            memRead = cpuOutMemAddr <$> cpuOut
+            memWrite = packWrite memRead (fmap pack <$> cpuOutMemWrite <$> cpuOut)
 
-        pixel = mux visible framebuf (pure False)
+        cpuOut = mealyState (runCPU defaultOut cpu) initState cpuIn
+
+        pixel = mux visible (framebuf fbRead) (pure low)
           where
             visible = isJust <$> x0 .&&. isJust <$> y0
-
-            fbRead = fbIndex <$> (fromMaybe 0 <$> x0) <*> (fromMaybe 0 <$> y0)
-            framebuf = blockRam (replicate (SNat :: SNat 2048) False) fbRead fbWrite
+            fbRead = (,) <$> (fromMaybe 0 <$> x0) <*> (fromMaybe 0 <$> y0)
 
         vgaR = monochrome <$> pixel
         vgaG = monochrome <$> pixel
         vgaB = monochrome <$> pixel
 
-monochrome :: (Bounded a) => Bool -> a
-monochrome b = if b then maxBound else minBound
+monochrome :: (Bounded a) => Bit -> a
+monochrome b = if bitToBool b then maxBound else minBound
 
 serialRate :: Word32
 serialRate = 9600
 
-fbIndex :: VidX -> VidY -> Unsigned 11
-fbIndex x y = unpack . pack $ (x, y)
+fbIndex :: (VidX, VidY) -> Unsigned 11
+fbIndex = unpack . pack
+
+packWrite :: (Applicative f) => f a -> f (Maybe b) -> f (Maybe (a, b))
+packWrite addr x = sequenceA <$> ((,) <$> addr <*> x)
+
+d2048 :: SNat 2048
+d2048 = SNat
+
+d4096 :: SNat 4096
+d4096 = SNat
