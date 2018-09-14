@@ -16,7 +16,7 @@ import Data.Foldable (find)
 
 keypad
     :: (HiddenClockReset dom gated synchronous)
-    => Signal dom (Maybe ScanCode) -> (Signal dom KeypadState, Signal dom (Maybe (KeyEvent, Key)))
+    => Signal dom (Maybe ScanCode) -> (Signal dom KeypadState, Signal dom (Maybe (Bool, Key)))
 keypad scanCode = (keys, event)
   where
     event = (fromScanCode =<<) <$> scanCode
@@ -26,14 +26,14 @@ keypad scanCode = (keys, event)
         keys <- keys
         pure $ flip applyEvent keys <$> ev
 
-applyEvent :: (KeyEvent, Key) -> KeypadState -> KeypadState
-applyEvent (ev, key) = replace key (ev == KeyPress)
+applyEvent :: (Bool, Key) -> KeypadState -> KeypadState
+applyEvent (state, key) = replace key state
 
-fromScanCode :: ScanCode -> Maybe (KeyEvent, Key)
+fromScanCode :: ScanCode -> Maybe (Bool, Key)
 fromScanCode (ScanCode ev ext code) = do
     guard $ ext == False
     (_, key) <- find ((code ==) . fst) (zip (concat codes) (concat layout))
-    pure (ev, key)
+    pure (ev == KeyPress, key)
 
 layout :: Vec 4 (Vec 4 Key)
 layout =
