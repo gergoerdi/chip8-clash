@@ -11,6 +11,7 @@ clashProject = ClashProject
     , clashFlags =
         [ "-iclash-sandbox/lib/src-clash"
         , "-Wno-partial-type-signatures"
+        , "-fclash-inline-limit=100"
         ]
     , shakeDir = "clash-sandbox/shake"
     }
