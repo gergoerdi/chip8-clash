@@ -72,8 +72,8 @@ data CPUOut = CPUOut
     , cpuOutFBWrite :: Maybe Bit
     }
 
-cpuOut :: CPUState -> CPUOut
-cpuOut CPUState{..} = CPUOut{..}
+defaultOut :: CPUState -> CPUOut
+defaultOut CPUState{..} = CPUOut{..}
   where
     cpuOutMemAddr = pc
     cpuOutMemWrite = mzero
