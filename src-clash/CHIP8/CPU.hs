@@ -11,6 +11,7 @@ import Cactus.Clash.Util
 import Cactus.Clash.CPU
 import Control.Monad.State
 import Data.Word
+import Data.Foldable (for_)
 
 data DrawPhase
     = DrawRead
@@ -24,6 +25,7 @@ data Phase
     | LoadReg Reg
     | ClearFB (VidX, VidY)
     | Draw DrawPhase (VidX, VidY) Nybble (Index 8)
+    | WaitKeyPress Reg
 
 succXY :: (Eq a, Bounded a, Enum a, Eq b, Bounded b, Enum b) => (a, b) -> Maybe (a, b)
 succXY (x, y) =
@@ -44,6 +46,7 @@ data CPUIn = CPUIn
     { cpuInMem :: Word8
     , cpuInFB :: Bit
     , cpuInKeys :: KeypadState
+    , cpuInKeyEvent :: Maybe (Bool, Key)
     }
 
 initState :: CPUState
@@ -98,6 +101,9 @@ cpu = do
         LoadReg r -> loadReg r
         ClearFB xy -> clearFB xy
         Draw dp xy row col -> draw dp xy row col
+        WaitKeyPress reg -> for_ cpuInKeyEvent $ \(pressed, key) -> when pressed $ do
+            setReg reg $ fromIntegral key
+            goto Fetch1
   where
     goto ph = modify $ \s -> s{ phase = ph }
 
@@ -197,7 +203,7 @@ cpu = do
                 key <- fromIntegral <$> getReg regX
                 let isPressed = cpuInKeys !! key
                 when (isPressed == skipIfPressed) skip
-            -- WaitKey regX -> do
+            WaitKey regX -> goto $ WaitKeyPress regX
             -- GetTimer regX -> do
             -- SetTimer regX -> do
             -- SetSound regX -> do
