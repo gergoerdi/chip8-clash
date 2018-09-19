@@ -9,10 +9,10 @@ clashProject = ClashProject
     , ipCores = ["ClockMan25"]
     , vhdlSrcs = ["Top"]
     , clashFlags =
-        [ "-i../clash-sandbox/lib/src-clash"
+        [ "-iclash-sandbox/lib/src-clash"
         , "-Wno-partial-type-signatures"
         ]
-    , shakeDir = "../clash-sandbox/shake"
+    , shakeDir = "clash-sandbox/shake"
     }
 
 main :: IO ()
