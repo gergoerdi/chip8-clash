@@ -6,12 +6,13 @@ clashProject = ClashProject
     , clashModule = "CHIP8"
     , clashTopName = "CHIP8"
     , topName = "Top"
-    , ipCores = ["ClockMan25"]
+    , ipCores = []
     , vhdlSrcs = ["Top"]
     , clashFlags =
         [ "-iclash-sandbox/lib/src-clash"
         , "-Wno-partial-type-signatures"
         , "-fclash-inline-limit=100"
+        , "-fclash-intwidth=32"
         ]
     , shakeDir = "clash-sandbox/shake"
     }
