@@ -6,8 +6,8 @@ use work.chip8_types.all;
 
 entity Top is
   port(CLK_32MHZ    : in std_logic;
-       RX           : in std_logic;
-       TX           : out std_logic;
+       -- RX           : in std_logic;
+       -- TX           : out std_logic;
 
        PS2CLK_A     : in std_logic;
        PS2DATA_A    : in std_logic;
@@ -45,8 +45,8 @@ begin
   inst_chip8 : entity work.CHIP8
   port map (CLK_25MHZ => CLK_25MHZ,
             RESET => RESET,
-            RX => RX,
-            TX => TX,
+            RX => '0',
+            -- TX => TX,
             PS2_CLK => PS2CLK_A,
             PS2_DATA => PS2DATA_A,
             VGA_VSYNC => VGA_VSYNC,
