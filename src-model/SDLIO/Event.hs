@@ -9,6 +9,7 @@ module SDLIO.Event
 import Clash.Prelude
 
 import CHIP8.Types
+import CHIP8.Keypad (layout)
 import SDL
 
 import Clash.Sized.Vector as V
@@ -28,16 +29,8 @@ userEvent ev = case ev of
     WindowClosedEvent{} -> Just Quit
     _ -> Nothing
 
-keyMap :: Vec 4 (Vec 4 (Index 16))
+keyMap :: Vec 4 (Vec 4 Keycode)
 keyMap =
-    (0x1 :> 0x2 :> 0x3 :> 0xc :> Nil) :>
-    (0x4 :> 0x5 :> 0x6 :> 0xd :> Nil) :>
-    (0x7 :> 0x8 :> 0x9 :> 0xe :> Nil) :>
-    (0xa :> 0x0 :> 0xb :> 0xf :> Nil) :>
-    Nil
-
-keyLayout :: Vec 4 (Vec 4 Keycode)
-keyLayout =
     (Keycode1 :> Keycode2 :> Keycode3 :> Keycode4 :> Nil) :>
     (KeycodeQ :> KeycodeW :> KeycodeE :> KeycodeR :> Nil) :>
     (KeycodeA :> KeycodeS :> KeycodeD :> KeycodeF :> Nil) :>
@@ -48,4 +41,4 @@ encodeKey :: Keycode -> Maybe (Index 16)
 encodeKey = flip lookup table
   where
     table :: [(Keycode, Index 16)]
-    table = concatMap V.toList . V.toList $ V.zipWith V.zip keyLayout keyMap
+    table = concatMap V.toList . V.toList $ V.zipWith V.zip keyMap layout
