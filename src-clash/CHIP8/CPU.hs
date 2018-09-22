@@ -6,6 +6,7 @@ import Clash.Prelude
 
 import CHIP8.Types
 import CHIP8.Opcode
+import CHIP8.ALU
 
 import Cactus.Clash.Util
 import Cactus.Clash.CPU
@@ -121,7 +122,7 @@ cpu = do
             Nothing -> goto Fetch1
             Just i' -> do
                 let addr = ptr + fromIntegral i'
-                writeMem addr $ toBCD x !! i'
+                writeMem addr $ toBCDRom x !! i'
                 goto $ WriteBCD x i'
   where
     goto ph = modify $ \s -> s{ phase = ph }
@@ -240,7 +241,7 @@ cpu = do
             StoreBCD regX -> do
                 x <- getReg regX
                 ptr <- gets ptr
-                writeMem ptr $ toBCD x !! 0
+                writeMem ptr $ toBCDRom x !! 0
                 goto $ WriteBCD x 0
             StoreRegs regMax -> storeReg regMax
             LoadRegs regMax -> do
@@ -266,36 +267,5 @@ cpu = do
         readMem $ ptr + fromIntegral row
         goto $ Draw DrawWrite (x, y) row col
 
-alu :: Fun -> Word8 -> Word8 -> (Word8, Maybe Word8)
-alu fun = case fun of
-    Id -> noCarry (\x y -> y)
-    Or -> noCarry (.|.)
-    And -> noCarry (.&.)
-    XOr -> noCarry xor
-    Add -> carry (+) (\x y z -> z < x)
-    Subtract -> carry (-) (\x y z -> z <= x)
-    SubtractFlip -> carry (flip (-)) (\x y z -> z <= y)
-    ShiftRight -> carry (\x _ -> x `shiftR` 1) (\x _ _ -> x `testBit` 0)
-    ShiftLeft -> carry (\x _ -> x `shiftL` 1) (\x _ _ -> x `testBit` 7)
-  where
-    noCarry f x y = (f x y, Nothing)
-    carry f p x y = let z = f x y in (z, Just $ if p x y z then 1 else 0)
-
-toBCD :: Word8 -> Vec 3 Word8
-toBCD x =
-    x `div` 100 :>
-    (x `div` 10) `mod` 10 :>
-    x `mod` 10 :>
-    Nil
-
-toFont :: Word8 -> Addr
-toFont x = fromIntegral lo `shiftL` 3
-  where
-    (_, lo) = nybbles x
-
--- | 15-bit maximal linear feedback shift register based on x^15 + x^14 + 1
--- http://en.wikipedia.org/wiki/Linear_feedback_shift_register#Some_polynomials_for_maximal_LFSRs
-lfsr :: Unsigned 15 -> Unsigned 15
-lfsr s = (s `shiftR` 1) .|. ((fromIntegral b) `shiftL` 14)
-  where
-    b = complement $ s!0 `xor` s!1
+toBCDRom :: Word8 -> Vec 3 Word8
+toBCDRom = asyncRom $(listToVecTH $ fmap toBCD [(minBound :: Word8)..maxBound])
