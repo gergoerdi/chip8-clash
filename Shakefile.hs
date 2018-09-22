@@ -6,8 +6,6 @@ clashProject = ClashProject
     , clashModule = "CHIP8"
     , clashTopName = "CHIP8"
     , topName = "Top"
-    , ipCores = []
-    , vhdlSrcs = ["Top"]
     , clashFlags =
         [ "-iclash-sandbox/lib/src-clash"
         , "-Wno-partial-type-signatures"
