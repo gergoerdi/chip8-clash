@@ -53,6 +53,7 @@ data CPUState = CPUState
     , sp :: Index 24
     , phase :: Phase
     , timer :: Word8
+    , randomState :: Unsigned 15
     }
 
 initState :: CPUState
@@ -66,6 +67,7 @@ initState = CPUState
     , sp = 0
     , phase = Init
     , timer = 0
+    , randomState = 0
     }
 
 data CPUOut = CPUOut
@@ -87,6 +89,7 @@ cpu :: CPU CPUIn CPUState CPUOut ()
 cpu = do
     CPUIn{..} <- input
     CPUState{..} <- get
+    modify $ \s -> s { randomState = lfsr randomState }
     when cpuInVBlank $ modify $ \s -> s{ timer = fromMaybe 0 $ predIdx timer }
 
     case phase of
@@ -198,8 +201,9 @@ cpu = do
             JumpPlusR0 addr -> do
                 x <- getReg 0
                 jump (addr + fromIntegral x)
-            Randomize regX mask -> do -- TODO
-                setReg regX mask
+            Randomize regX mask -> do
+                rnd <- gets $ fromIntegral . randomState
+                setReg regX $ rnd .&. mask
             DrawSprite regX regY height -> do
                 x <- fromIntegral <$> getReg regX
                 y <- fromIntegral <$> getReg regY
@@ -273,3 +277,10 @@ toFont :: Word8 -> Addr
 toFont x = fromIntegral lo `shiftL` 3
   where
     (_, lo) = nybbles x
+
+-- | 15-bit maximal linear feedback shift register based on x^15 + x^14 + 1
+-- http://en.wikipedia.org/wiki/Linear_feedback_shift_register#Some_polynomials_for_maximal_LFSRs
+lfsr :: Unsigned 15 -> Unsigned 15
+lfsr s = (s `shiftR` 1) .|. ((fromIntegral b) `shiftL` 14)
+  where
+    b = complement $ s!0 `xor` s!1
