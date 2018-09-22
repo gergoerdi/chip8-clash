@@ -30,6 +30,7 @@ data Phase
     | ClearFB (VidX, VidY)
     | Draw DrawPhase (VidX, VidY) Nybble (Index 8)
     | WaitKeyPress Reg
+    | WriteBCD Word8 (Index 3)
 
 succXY :: (Eq a, Bounded a, Enum a, Eq b, Bounded b, Enum b) => (a, b) -> Maybe (a, b)
 succXY (x, y) =
@@ -116,6 +117,12 @@ cpu = do
         WaitKeyPress reg -> for_ cpuInKeyEvent $ \(pressed, key) -> when pressed $ do
             setReg reg $ fromIntegral key
             goto Fetch1
+        WriteBCD x i -> case succIdx i of
+            Nothing -> goto Fetch1
+            Just i' -> do
+                let addr = ptr + fromIntegral i'
+                writeMem addr $ toBCD x !! i'
+                goto $ WriteBCD x i'
   where
     goto ph = modify $ \s -> s{ phase = ph }
 
@@ -230,7 +237,11 @@ cpu = do
             LoadFont regX -> do
                 x <- getReg regX
                 modify $ \s -> s{ ptr = toFont x }
-            -- StoreBCD regX -> do
+            StoreBCD regX -> do
+                x <- getReg regX
+                ptr <- gets ptr
+                writeMem ptr $ toBCD x !! 0
+                goto $ WriteBCD x 0
             StoreRegs regMax -> storeReg regMax
             LoadRegs regMax -> do
                 ptr <- gets ptr
@@ -270,8 +281,12 @@ alu fun = case fun of
     noCarry f x y = (f x y, Nothing)
     carry f p x y = let z = f x y in (z, Just $ if p x y z then 1 else 0)
 
-toBCD :: Word8 -> (Word8, Word8, Word8)
-toBCD x = (x `div` 100, (x `div` 10) `mod` 10, x `mod` 10)
+toBCD :: Word8 -> Vec 3 Word8
+toBCD x =
+    x `div` 100 :>
+    (x `div` 10) `mod` 10 :>
+    x `mod` 10 :>
+    Nil
 
 toFont :: Word8 -> Addr
 toFont x = fromIntegral lo `shiftL` 3
