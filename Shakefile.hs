@@ -39,3 +39,6 @@ main = mainForCustom clashProject $ \ClashKit{..} -> do
 
     -- buildDir </> topName clashProject <.> "bit" %> \_out -> do
     --     need [buildDir </> "image.rom"]
+
+    phony "model" $ do
+        clash "clashi" ["-isrc-model", "src-model" </> "SDLIO.hs"]
