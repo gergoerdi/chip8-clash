@@ -10,6 +10,7 @@ import CHIP8.ALU
 
 import Cactus.Clash.Util
 import Cactus.Clash.CPU
+import Control.Lens hiding (Index)
 import Control.Monad.State
 import Data.Word
 import Data.Foldable (for_)
@@ -48,29 +49,30 @@ data CPUIn = CPUIn
     }
 
 data CPUState = CPUState
-    { opHi, opLo :: Word8
-    , pc, ptr :: Addr
-    , registers :: Vec 16 Word8
-    , stack :: Vec 24 Addr
-    , sp :: Index 24
-    , phase :: Phase
-    , timer :: Word8
-    , randomState :: Unsigned 9
+    { _opHi, _opLo :: Word8
+    , _pc, _ptr :: Addr
+    , _registers :: Vec 16 Word8
+    , _stack :: Vec 24 Addr
+    , _sp :: Index 24
+    , _phase :: Phase
+    , _timer :: Word8
+    , _randomState :: Unsigned 9
     }
 
 initState :: CPUState
 initState = CPUState
-    { opHi = 0x00
-    , opLo = 0x00
-    , pc = 0x200
-    , ptr = 0x000
-    , registers = pure 0
-    , stack = pure 0
-    , sp = 0
-    , phase = Init
-    , timer = 0
-    , randomState = 0
+    { _opHi = 0x00
+    , _opLo = 0x00
+    , _pc = 0x200
+    , _ptr = 0x000
+    , _registers = pure 0
+    , _stack = pure 0
+    , _sp = 0
+    , _phase = Init
+    , _timer = 0
+    , _randomState = 0
     }
+makeLenses ''CPUState
 
 data CPUOut = CPUOut
     { cpuOutMemAddr :: Addr
@@ -82,7 +84,7 @@ data CPUOut = CPUOut
 defaultOut :: CPUState -> CPUOut
 defaultOut CPUState{..} = CPUOut{..}
   where
-    cpuOutMemAddr = pc
+    cpuOutMemAddr = _pc
     cpuOutMemWrite = mzero
     cpuOutFBAddr = minBound
     cpuOutFBWrite = mzero
@@ -91,22 +93,19 @@ cpu :: CPU CPUIn CPUState CPUOut ()
 cpu = do
     CPUIn{..} <- input
     CPUState{..} <- get
-    modify $ \s -> s { randomState = lfsr randomState }
-    when cpuInVBlank $ modify $ \s -> s{ timer = fromMaybe 0 $ predIdx timer }
+    randomState %= lfsr
+    when cpuInVBlank $ do
+        timer %= fromMaybe 0 . predIdx
 
-    case phase of
+    case _phase of
         Init -> goto Fetch1
         Fetch1 -> do
-            modify $ \s -> s
-                { opHi = cpuInMem
-                , pc = succ pc
-                }
+            opHi .= cpuInMem
+            pc %= succ
             goto Exec
         Exec -> do
-            modify $ \s -> s
-                { opLo = cpuInMem
-                , pc = trace (printf "PC = %04x" (fromIntegral pc :: Word16)) $ succ pc
-                }
+            opLo .= cpuInMem
+            pc %= succ
             goto Fetch1
             exec
         StoreReg r -> case predIdx r of
@@ -121,18 +120,20 @@ cpu = do
         WriteBCD x i -> case succIdx i of
             Nothing -> goto Fetch1
             Just i' -> do
-                let addr = ptr + fromIntegral i'
+                let addr = _ptr + fromIntegral i'
                 writeMem addr $ toBCDRom x !! i'
                 goto $ WriteBCD x i'
   where
-    goto ph = modify $ \s -> s{ phase = ph }
+    goto ph = phase .= ph
 
     clearFB xy = do
         writeFB xy low
         goto $ maybe Fetch1 ClearFB $ succXY xy
 
-    setReg reg val = modify $ \s -> s{ registers = replace reg val (registers s) }
-    getReg reg = gets $ (!! reg) . registers
+    setReg reg val = do
+        registers %= replace reg val
+    getReg reg = do
+        gets $ (!! reg) . _registers
 
     writeMem addr val = tell $ \out -> out{ cpuOutMemAddr = addr, cpuOutMemWrite = Just val }
     readMem addr = tell $ \out -> out{ cpuOutMemAddr = addr }
@@ -146,36 +147,35 @@ cpu = do
         case predIdx reg of
             Nothing -> goto Fetch1
             Just reg' -> do
-                ptr <- gets ptr
+                ptr <- gets _ptr
                 readMem (ptr + fromIntegral reg')
                 goto $ LoadReg reg'
 
     storeReg reg = do
-        ptr <- gets ptr
+        ptr <- gets _ptr
         val <- getReg reg
         writeMem (ptr + fromIntegral reg) val
         goto $ StoreReg reg
 
-    popPC = modify $ \s@CPUState{..} -> let sp' = prevIdx sp in s
-        { sp = sp'
-        , pc = stack !! sp'
-        }
+    popPC = do
+        sp' <- gets $ prevIdx . _sp
+        stack <- gets _stack
+        sp .= sp'
+        pc .= stack !! sp'
 
-    pushPC = modify $ \s@CPUState{..} -> s
-        { sp = nextIdx sp
-        , stack = replace sp pc stack
-        }
+    pushPC = do
+        sp0 <- gets _sp
+        pc <- gets _pc
+        stack %= replace sp0 pc
+        sp %= nextIdx
 
-    jump addr = modify $ \s -> s{ pc = addr }
-
-    skip = do
-        pc <- gets pc
-        jump $ pc + 2
+    jump addr = pc .= addr
+    skip = pc %= (+ 2)
 
     exec = do
         CPUIn{..} <- input
-        CPUState{opHi, opLo} <- get
-        case traceShowId $ decode opHi opLo of
+        CPUState{_opHi, _opLo} <- get
+        case traceShowId $ decode _opHi _opLo of
             ClearScreen -> clearFB minBound
             Ret -> do
                 popPC
@@ -205,12 +205,12 @@ cpu = do
                 setReg regX x'
                 maybe (return ()) (setReg 0xf) carry
             SetPtr addr -> do
-                modify $ \s -> s{ ptr = addr }
+                ptr .= addr
             JumpPlusR0 addr -> do
                 x <- getReg 0
                 jump (addr + fromIntegral x)
             Randomize regX mask -> do
-                rnd <- gets $ fromIntegral . randomState
+                rnd <- gets $ fromIntegral . _randomState
                 setReg regX $ rnd .&. mask
             DrawSprite regX regY height -> do
                 x <- fromIntegral <$> getReg regX
@@ -227,25 +227,25 @@ cpu = do
                 when (isPressed == skipIfPressed) skip
             WaitKey regX -> goto $ WaitKeyPress regX
             GetTimer regX -> do
-                setReg regX =<< gets timer
+                setReg regX =<< gets _timer
             SetTimer regX -> do
                 val <- getReg regX
-                modify $ \s -> s{ timer = val }
+                timer .= val
             -- SetSound regX -> do
             AddPtr regX -> do
                 x <- getReg regX
-                modify $ \s -> s{ ptr = ptr s + fromIntegral x }
+                ptr %= (fromIntegral x +)
             LoadFont regX -> do
                 x <- getReg regX
-                modify $ \s -> s{ ptr = toFont x }
+                ptr .= toFont x
             StoreBCD regX -> do
                 x <- getReg regX
-                ptr <- gets ptr
+                ptr <- gets _ptr
                 writeMem ptr $ toBCDRom x !! 0
                 goto $ WriteBCD x 0
             StoreRegs regMax -> storeReg regMax
             LoadRegs regMax -> do
-                ptr <- gets ptr
+                ptr <- gets _ptr
                 readMem (ptr + fromIntegral regMax)
                 goto $ LoadReg regMax
             op -> errorX $ show op
@@ -262,7 +262,7 @@ cpu = do
                         ]
         goto $ maybe Fetch1 (uncurry $ Draw DrawRead (x, y)) next
     draw DrawRead (x, y) row col = do
-        ptr <- gets ptr
+        ptr <- gets _ptr
         readFB (x + fromIntegral col, y + fromIntegral row)
         readMem $ ptr + fromIntegral row
         goto $ Draw DrawWrite (x, y) row col
