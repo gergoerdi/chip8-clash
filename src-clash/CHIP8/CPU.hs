@@ -92,12 +92,10 @@ defaultOut CPUState{..} = CPUOut{..}
 cpu :: CPU CPUIn CPUState CPUOut ()
 cpu = do
     CPUIn{..} <- input
-    CPUState{..} <- get
     randomState %= lfsr
-    when cpuInVBlank $ do
-        timer %= fromMaybe 0 . predIdx
+    when cpuInVBlank $ timer %= fromMaybe 0 . predIdx
 
-    case _phase of
+    use phase >>= \ph -> case ph of
         Init -> goto Fetch1
         Fetch1 -> do
             opHi .= cpuInMem
@@ -120,7 +118,8 @@ cpu = do
         WriteBCD x i -> case succIdx i of
             Nothing -> goto Fetch1
             Just i' -> do
-                let addr = _ptr + fromIntegral i'
+                addr0 <- use ptr
+                let addr = addr0 + fromIntegral i'
                 writeMem addr $ toBCDRom x !! i'
                 goto $ WriteBCD x i'
   where
@@ -132,8 +131,7 @@ cpu = do
 
     setReg reg val = do
         registers %= replace reg val
-    getReg reg = do
-        gets $ (!! reg) . _registers
+    getReg reg = (!! reg) <$> use registers
 
     writeMem addr val = tell $ \out -> out{ cpuOutMemAddr = addr, cpuOutMemWrite = Just val }
     readMem addr = tell $ \out -> out{ cpuOutMemAddr = addr }
@@ -147,25 +145,25 @@ cpu = do
         case predIdx reg of
             Nothing -> goto Fetch1
             Just reg' -> do
-                ptr <- gets _ptr
+                ptr <- use ptr
                 readMem (ptr + fromIntegral reg')
                 goto $ LoadReg reg'
 
     storeReg reg = do
-        ptr <- gets _ptr
+        ptr <- use ptr
         val <- getReg reg
         writeMem (ptr + fromIntegral reg) val
         goto $ StoreReg reg
 
     popPC = do
-        sp' <- gets $ prevIdx . _sp
-        stack <- gets _stack
+        sp' <- prevIdx <$> use sp
+        stack <- use stack
         sp .= sp'
         pc .= stack !! sp'
 
     pushPC = do
-        sp0 <- gets _sp
-        pc <- gets _pc
+        sp0 <- use sp
+        pc <- use pc
         stack %= replace sp0 pc
         sp %= nextIdx
 
@@ -174,8 +172,8 @@ cpu = do
 
     exec = do
         CPUIn{..} <- input
-        CPUState{_opHi, _opLo} <- get
-        case traceShowId $ decode _opHi _opLo of
+        opcode <- decode <$> use opHi <*> use opLo
+        case traceShowId opcode of
             ClearScreen -> clearFB minBound
             Ret -> do
                 popPC
@@ -210,7 +208,7 @@ cpu = do
                 x <- getReg 0
                 jump (addr + fromIntegral x)
             Randomize regX mask -> do
-                rnd <- gets $ fromIntegral . _randomState
+                rnd <- fromIntegral <$> use randomState
                 setReg regX $ rnd .&. mask
             DrawSprite regX regY height -> do
                 x <- fromIntegral <$> getReg regX
@@ -227,11 +225,13 @@ cpu = do
                 when (isPressed == skipIfPressed) skip
             WaitKey regX -> goto $ WaitKeyPress regX
             GetTimer regX -> do
-                setReg regX =<< gets _timer
+                setReg regX =<< use timer
             SetTimer regX -> do
                 val <- getReg regX
                 timer .= val
-            -- SetSound regX -> do
+            SetSound regX -> do
+                -- TODO
+                return ()
             AddPtr regX -> do
                 x <- getReg regX
                 ptr %= (fromIntegral x +)
@@ -240,12 +240,12 @@ cpu = do
                 ptr .= toFont x
             StoreBCD regX -> do
                 x <- getReg regX
-                ptr <- gets _ptr
+                ptr <- use ptr
                 writeMem ptr $ toBCDRom x !! 0
                 goto $ WriteBCD x 0
             StoreRegs regMax -> storeReg regMax
             LoadRegs regMax -> do
-                ptr <- gets _ptr
+                ptr <- use ptr
                 readMem (ptr + fromIntegral regMax)
                 goto $ LoadReg regMax
             op -> errorX $ show op
@@ -262,7 +262,7 @@ cpu = do
                         ]
         goto $ maybe Fetch1 (uncurry $ Draw DrawRead (x, y)) next
     draw DrawRead (x, y) row col = do
-        ptr <- gets _ptr
+        ptr <- use ptr
         readFB (x + fromIntegral col, y + fromIntegral row)
         readMem $ ptr + fromIntegral row
         goto $ Draw DrawWrite (x, y) row col
