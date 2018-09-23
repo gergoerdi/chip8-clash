@@ -23,6 +23,7 @@ import qualified Data.List as L
 import qualified Data.ByteString as BS
 
 import Text.Printf
+import System.Environment (getArgs)
 
 stateful :: (MonadIO m) => s -> (i -> State s o) -> IO (m i -> (o -> m a) -> m a)
 stateful s0 step = do
@@ -38,7 +39,12 @@ stateful s0 step = do
 
 main :: IO ()
 main = do
-    prog <- BS.unpack <$> BS.readFile "test.ch8"
+    imgFile <- do
+        args <- getArgs
+        return $ case args of
+            [imgFile] -> imgFile
+            _ -> "games/hidden.ch8"
+    prog <- BS.unpack <$> BS.readFile imgFile
 
     framebuf <- mkMemory (minBound, maxBound) [] low
     ram <- mkMemory (minBound, maxBound) (L.replicate 0x200 0 <> prog) 0
