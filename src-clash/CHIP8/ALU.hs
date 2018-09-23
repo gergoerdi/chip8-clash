@@ -32,9 +32,10 @@ toFont x = fromIntegral lo `shiftL` 3
   where
     (_, lo) = nybbles x
 
--- | 15-bit maximal linear feedback shift register based on x^15 + x^14 + 1
+-- | 9-bit maximal linear feedback shift register based on x^9 + x^5 + 1
 -- http://en.wikipedia.org/wiki/Linear_feedback_shift_register#Some_polynomials_for_maximal_LFSRs
-lfsr :: Unsigned 15 -> Unsigned 15
-lfsr s = (s `shiftR` 1) .|. (fromIntegral b `shiftL` 14)
+lfsr :: Unsigned 9 -> Unsigned 9
+lfsr s = (s `rotateR` 1) `xor` b4
   where
-    b = complement $ s!0 `xor` s!1
+    b = fromIntegral $ complement . lsb $ s
+    b4 = b `shiftL` 4

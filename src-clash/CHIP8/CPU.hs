@@ -55,7 +55,7 @@ data CPUState = CPUState
     , sp :: Index 24
     , phase :: Phase
     , timer :: Word8
-    , randomState :: Unsigned 15
+    , randomState :: Unsigned 9
     }
 
 initState :: CPUState
