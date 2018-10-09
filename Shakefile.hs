@@ -19,12 +19,12 @@ clashProject = ClashProject
     , clashTopName = "CHIP8"
     , topName = "Top"
     , clashFlags =
-        [ "-iclash-sandbox/lib/src-clash"
+        [ "-iclash-utils/src-clash"
         , "-Wno-partial-type-signatures"
         , "-fclash-inline-limit=100"
         , "-fclash-intwidth=32"
         ]
-    , shakeDir = "clash-sandbox/shake"
+    , shakeDir = "clash-utils/shake"
     }
 
 main :: IO ()
