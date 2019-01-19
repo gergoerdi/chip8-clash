@@ -14,6 +14,7 @@ import SDL
 
 import Clash.Sized.Vector as V
 import Clash.Sized.Index
+import Data.List as L
 
 data UserEvent
     = KeypadEvent Bool (Index 16)
@@ -41,4 +42,4 @@ encodeKey :: Keycode -> Maybe (Index 16)
 encodeKey = flip lookup table
   where
     table :: [(Keycode, Index 16)]
-    table = concatMap V.toList . V.toList $ V.zipWith V.zip keyMap layout
+    table = L.concatMap V.toList . V.toList $ V.zipWith V.zip keyMap layout
