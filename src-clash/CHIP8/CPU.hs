@@ -21,6 +21,7 @@ import Text.Printf
 data DrawPhase
     = DrawRead
     | DrawWrite
+    deriving (Generic, Undefined)
 
 data Phase
     = Init
@@ -32,6 +33,7 @@ data Phase
     | Draw DrawPhase (VidX, VidY) Nybble (Index 8)
     | WaitKeyPress Reg
     | WriteBCD Word8 (Index 3)
+    deriving (Generic, Undefined)
 
 succXY :: (Eq a, Bounded a, Enum a, Eq b, Bounded b, Enum b) => (a, b) -> Maybe (a, b)
 succXY (x, y) =
@@ -57,6 +59,7 @@ data CPUState = CPUState
     , timer :: Word8
     , randomState :: Unsigned 9
     }
+    deriving (Generic, Undefined)
 
 initState :: CPUState
 initState = CPUState
