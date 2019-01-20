@@ -76,7 +76,7 @@ topEntity = exposeClockReset board
 
         cpuIn = do
             cpuInFB <- framebuf $ cpuOutFBAddr <$> cpuOut
-            cpuInMem <- mux isROM memROM memRAM
+            cpuInMem <- mux (delay1 False isROM) memROM memRAM
             cpuInKeys <- keys
             cpuInKeyEvent <- keyEvent
             cpuInVBlank <- delay1 False vgaStartFrame
