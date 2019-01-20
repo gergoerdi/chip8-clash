@@ -67,8 +67,6 @@ topEntity = exposeClockReset board
         x0 = (chipX =<<) <$> vgaX
         y0 = (chipY =<<) <$> vgaY
 
-        delay1 x = toSignal . delayed (singleton x) . fromSignal
-
         framebuf r = blockRam (replicate d2048 low) r' w
           where
             r' = fbIndex <$> r
@@ -76,7 +74,7 @@ topEntity = exposeClockReset board
 
         cpuIn = do
             cpuInFB <- framebuf $ cpuOutFBAddr <$> cpuOut
-            cpuInMem <- mux (delay1 False isROM) memROM memRAM
+            cpuInMem <- memRead
             cpuInKeys <- keys
             cpuInKeyEvent <- keyEvent
             cpuInVBlank <- delay1 False vgaStartFrame
@@ -84,11 +82,15 @@ topEntity = exposeClockReset board
           where
             (keys, keyEvent) = keypad $ parseScanCode ps2
             memAddr = cpuOutMemAddr <$> cpuOut
-            memWrite = packWrite memAddr (fmap pack <$> cpuOutMemWrite <$> cpuOut)
+            memWrite = fmap pack <$> cpuOutMemWrite <$> cpuOut
 
-            memRAM = unpack <$> blockRamFile d4096 "image.rom" memAddr memWrite
-            memROM = rom $(lift hexDigits) memAddr
-            isROM = memAddr .<. 128
+            fontROM = rom $(lift hexDigits)
+            mainRAM addr = unpack <$> blockRamFile d4096 "image.rom" addr (packWrite addr memWrite)
+
+            memRead = memoryMap memAddr $
+                UpTo 0x0200 fontROM :>
+                Default mainRAM :>
+                Nil
 
         cpuOut = mealyState (runCPU defaultOut cpu) initState cpuIn
 
@@ -100,6 +102,30 @@ topEntity = exposeClockReset board
         vgaR = monochrome <$> pixel
         vgaG = monochrome <$> pixel
         vgaB = monochrome <$> pixel
+
+type MemRead domain a b = Signal domain (Unsigned a) -> Signal domain b
+
+data MemSpec domain a b
+    = UpTo (Unsigned a) (MemRead domain a b)
+    | Default (MemRead domain a b)
+
+delay1
+    :: (Undefined a, HiddenClockReset domain gated synchronous)
+    => a -> Signal domain a -> Signal domain a
+delay1 x = toSignal . delayed (singleton x) . fromSignal
+
+memoryMap
+    :: (KnownNat a, HiddenClockReset domain gated synchronous)
+    => Signal domain (Unsigned a)
+    -> Vec n (MemSpec domain a b)
+    -> Signal domain b
+memoryMap addr mems = foldr (\spec -> mux (matches spec) (readFrom spec)) (errorX "memoryMap") mems
+  where
+    addr' = delay1 0 addr
+    matches (Default _) = pure True
+    matches (UpTo lim _) = addr' .<. pure lim
+    readFrom (Default mem) = mem addr
+    readFrom (UpTo _ mem) = mem addr
 
 monochrome :: (Bounded a) => Bit -> a
 monochrome b = if bitToBool b then maxBound else minBound
