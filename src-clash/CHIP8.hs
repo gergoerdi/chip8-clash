@@ -87,7 +87,7 @@ topEntity = exposeClockReset board
             memWrite = packWrite memAddr (fmap pack <$> cpuOutMemWrite <$> cpuOut)
 
             memRAM = unpack <$> blockRamFile d4096 "image.rom" memAddr memWrite
-            memROM = rom hexDigits memAddr
+            memROM = rom $(lift hexDigits) memAddr
             isROM = memAddr .<. 128
 
         cpuOut = mealyState (runCPU defaultOut cpu) initState cpuIn
