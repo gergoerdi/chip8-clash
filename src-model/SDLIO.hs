@@ -6,6 +6,7 @@ import Clash.Prelude
 
 import CHIP8.Types
 import CHIP8.CPU
+import CHIP8.Font
 import Cactus.Clash.CPU
 
 import SDLIO.Event
@@ -48,26 +49,32 @@ main = do
 
     framebuf <- mkMemory (minBound, maxBound) [] low
     ram <- mkMemory (minBound, maxBound) (L.replicate 0x200 0 <> prog) 0
+    fontROM <- mkMemory (0, 127) (toList hexDigits) 0
     keys <- newIORef $ pure False
+    memAddr <- newIORef 0x00
 
     withMainWindow $ \render -> do
     let mkInput vblank key = do
             liftIO $ modifyIORef keys $ maybe id applyKeyEvent key
             cpuInKeys <- readIORef keys
-            cpuInMem <- readData ram
+            cpuInMem <- do
+                addr <- liftIO $ readIORef memAddr
+                readData $ if addr < 128 then fontROM else ram
             cpuInFB <- readData framebuf
             let cpuInKeyEvent = key
                 cpuInVBlank = vblank
             return CPUIn{..}
 
         applyOutput CPUOut{..} = do
-            latchAddress framebuf $ cpuOutFBAddr
+            latchAddress framebuf cpuOutFBAddr
             traverse_ (writeData framebuf cpuOutFBAddr) cpuOutFBWrite
 
             -- liftIO $ printf "0x%04x\n" (fromIntegral cpuOutMemAddr :: Int)
-            latchAddress ram $ cpuOutMemAddr
+
+            liftIO $ writeIORef memAddr cpuOutMemAddr
+            latchAddress fontROM cpuOutMemAddr
+            latchAddress ram cpuOutMemAddr
             traverse_ (writeData ram cpuOutMemAddr) cpuOutMemWrite
-            pure ()
 
     stepCPU <- stateful initState $ runCPU defaultOut cpu
 

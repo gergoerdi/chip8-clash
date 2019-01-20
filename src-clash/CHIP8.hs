@@ -7,6 +7,7 @@ import CHIP8.Types
 import CHIP8.CPU
 import CHIP8.Video
 import CHIP8.Keypad
+import CHIP8.Font
 
 import Clash.Prelude hiding (clkPeriod)
 import Cactus.Clash.Util
@@ -75,15 +76,19 @@ topEntity = exposeClockReset board
 
         cpuIn = do
             cpuInFB <- framebuf $ cpuOutFBAddr <$> cpuOut
-            cpuInMem <- unpack <$> blockRamFile d4096 "image.rom" (cpuOutMemAddr <$> cpuOut) memWrite
+            cpuInMem <- mux isROM memROM memRAM
             cpuInKeys <- keys
             cpuInKeyEvent <- keyEvent
             cpuInVBlank <- delay1 False vgaStartFrame
             pure CPUIn{..}
           where
             (keys, keyEvent) = keypad $ parseScanCode ps2
-            memRead = cpuOutMemAddr <$> cpuOut
-            memWrite = packWrite memRead (fmap pack <$> cpuOutMemWrite <$> cpuOut)
+            memAddr = cpuOutMemAddr <$> cpuOut
+            memWrite = packWrite memAddr (fmap pack <$> cpuOutMemWrite <$> cpuOut)
+
+            memRAM = unpack <$> blockRamFile d4096 "image.rom" memAddr memWrite
+            memROM = rom hexDigits memAddr
+            isROM = memAddr .<. 128
 
         cpuOut = mealyState (runCPU defaultOut cpu) initState cpuIn
 
