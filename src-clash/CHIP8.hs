@@ -60,9 +60,9 @@ topEntity
        ( Signal Dom25 Bit
         , Signal Dom25 Bit
         , Signal Dom25 Bool
-        , Signal Dom25 (Unsigned 4)
-        , Signal Dom25 (Unsigned 4)
-        , Signal Dom25 (Unsigned 4)
+        , Signal Dom25 (Unsigned 8)
+        , Signal Dom25 (Unsigned 8)
+        , Signal Dom25 (Unsigned 8)
         )
       )
 topEntity = exposeClockReset board
