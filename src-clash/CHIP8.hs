@@ -1,6 +1,7 @@
 {-# LANGUAGE RecordWildCards, TupleSections #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE ApplicativeDo #-}
+{-# LANGUAGE NumericUnderscores #-}
 module CHIP8 where
 
 import CHIP8.Types
@@ -24,7 +25,7 @@ import Data.Function
 
 -- | 25.175 MHz clock, needed for the VGA mode we use.
 -- CLaSH requires the clock period to be specified in picoseconds.
-type Dom25 = Dom "CLK_25MHZ" (FromHz 25175000)
+type Dom25 = Dom "CLK_25MHZ" (FromHz 25_175_000)
 
 {-# NOINLINE topEntity #-}
 {-# ANN topEntity
