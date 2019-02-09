@@ -93,7 +93,7 @@ topEntity = exposeClockReset board
             memWrite = fmap pack <$> cpuOutMemWrite <$> cpuOut
 
             fontROM = rom $(lift hexDigits)
-            mainRAM addr = unpack <$> blockRamFile d4096 "image.rom" addr (packWrite addr memWrite)
+            mainRAM addr = unpack <$> blockRamFile d4096 "image.hex" addr (packWrite addr memWrite)
 
             memRead = memoryMap memAddr $
                 UpTo 0x0200 fontROM :>

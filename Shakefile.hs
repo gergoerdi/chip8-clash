@@ -25,12 +25,12 @@ clashProject = ClashProject
         , "-fclash-intwidth=32"
         ]
     , shakeDir = "clash-utils/shake"
-    , extraGenerated = \ClashKit{..} -> [buildDir </> "image.rom"]
+    , extraGenerated = \ClashKit{..} -> [buildDir </> "image.hex"]
     }
 
 main :: IO ()
 main = mainForCustom clashProject $ \ClashKit{..} -> do
-    buildDir </> "image.rom" %> \out -> do
+    buildDir </> "image.hex" %> \out -> do
         imageFile <- fromMaybe "games/hidden.ch8" <$> getConfig "IMAGE"
 
         bs <- liftIO $ BS.unpack <$> BS.readFile imageFile
