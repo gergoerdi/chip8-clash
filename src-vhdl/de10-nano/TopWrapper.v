@@ -37,10 +37,20 @@ I2C_HDMI_Config u_I2C_HDMI_Config (
 
 assign reset_n = 1'b1;
 
+wire clk_25;
+wire gen_clk_locked;
+
+video u_video (
+	.refclk_50_clk(FPGA_CLK1_50),
+	.rst_reset(!reset_n),
+	.outclk_25_clk(clk_25),
+	.locked_export(gen_clk_locked));
+
+assign HDMI_TX_CLK = clk_25;
+	
 vpg u_vpg (
-	.clk_50(FPGA_CLK1_50),
-	.reset_n(reset_n),
-	.vpg_pclk(HDMI_TX_CLK),
+	.clk_25(clk_25),
+	.reset_n(gen_clk_locked),
 	.vpg_de(HDMI_TX_DE),
 	.vpg_hs(HDMI_TX_HS),
 	.vpg_vs(HDMI_TX_VS),

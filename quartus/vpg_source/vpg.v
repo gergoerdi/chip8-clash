@@ -33,9 +33,8 @@
 `include "vpg.h"
 
 module vpg(
-	clk_50,
+	clk_25,
 	reset_n,
-	vpg_pclk,
 	vpg_de,
 	vpg_hs,
 	vpg_vs,
@@ -44,9 +43,8 @@ module vpg(
 	vpg_b
 );
 
-input					clk_50;
+input					clk_25;
 input					reset_n;
-output				vpg_pclk;
 output				vpg_de;
 output				vpg_hs;
 output				vpg_vs;
@@ -57,24 +55,16 @@ output	[7:0]		vpg_b;
 //=======================================================
 //  Signal declarations
 //=======================================================
-//=============== PLL reconfigure
-wire        gen_clk_locked;
 //============= assign timing constant  
 wire [11:0] h_total, h_sync, h_start, h_end; 
 wire [11:0] v_total, v_sync, v_start, v_end; 
 wire [11:0] v_active_14, v_active_24, v_active_34; 
 
 
-video u_video (
-	.refclk_50_clk(clk_50),
-	.rst_reset(!reset_n),
-	.outclk_25_clk(vpg_pclk),
-	.locked_export(gen_clk_locked));
-
 //=============== pattern generator according to vga timing
 vga_generator u_vga_generator (                                    
-	.clk(vpg_pclk),                
-	.reset_n(gen_clk_locked),                                                
+	.clk(clk_25),                
+	.reset_n(reset_n),                                                
 	.h_total(h_total),           
 	.h_sync(h_sync),           
 	.h_start(h_start),             
