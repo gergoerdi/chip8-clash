@@ -11,6 +11,7 @@ import CHIP8.Font
 
 import Clash.Prelude hiding (clkPeriod)
 import Cactus.Clash.Util
+import Cactus.Clash.Clock
 import Cactus.Clash.SerialTX
 import Cactus.Clash.SerialRX
 import Cactus.Clash.VGA

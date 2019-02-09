@@ -1,3 +1,4 @@
+{-# LANGUAGE NoStarIsType #-}
 module CHIP8.Font (hexDigits) where
 
 import Clash.Prelude
