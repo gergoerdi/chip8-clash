@@ -13,8 +13,8 @@ import CHIP8.Font
 import Clash.Prelude hiding (clkPeriod)
 import Cactus.Clash.Util
 import Cactus.Clash.Clock
-import Cactus.Clash.SerialTX
-import Cactus.Clash.SerialRX
+-- import Cactus.Clash.SerialTX
+-- import Cactus.Clash.SerialRX
 import Cactus.Clash.VGA
 import Cactus.Clash.PS2
 import Cactus.Clash.CPU
@@ -34,23 +34,29 @@ type Dom25 = Dom "CLK_25MHZ" (FromHz 25_175_000)
     , t_inputs =
           [ PortName "CLK_25MHZ"
           , PortName "RESET"
-          , PortName "RX"
+          -- , PortName "RX"
           , PortName "PS2_CLK"
           , PortName "PS2_DATA"
           ]
     , t_output = PortProduct ""
-          [ PortName "TX"
-          , PortProduct "" [ PortName "VGA_VSYNC", PortName "VGA_HSYNC", PortName "VGA_RED", PortName "VGA_GREEN", PortName "VGA_BLUE" ]
-          ]
+          -- [ PortName "TX"
+          -- , PortProduct ""
+            [ PortName "VGA_VSYNC"
+            , PortName "VGA_HSYNC"
+            , PortName "VGA_RED"
+            , PortName "VGA_GREEN"
+            , PortName "VGA_BLUE"
+            ]
+          -- ]
     }) #-}
 topEntity
     :: Clock Dom25 Source
     -> Reset Dom25 Asynchronous
+    -- -> Signal Dom25 Bit
     -> Signal Dom25 Bit
     -> Signal Dom25 Bit
-    -> Signal Dom25 Bit
-    -> ( Signal Dom25 Bit
-      , ( Signal Dom25 Bit
+    -> ( -- Signal Dom25 Bit
+       ( Signal Dom25 Bit
         , Signal Dom25 Bit
         , Signal Dom25 (Unsigned 4)
         , Signal Dom25 (Unsigned 4)
@@ -59,9 +65,9 @@ topEntity
       )
 topEntity = exposeClockReset board
   where
-    board rxIn ps2Clk ps2Data = (txOut, (delay1 high vgaVSync, delay1 high vgaHSync, vgaR, vgaG, vgaB))
+    board {- rxIn -} ps2Clk ps2Data = ({- txOut, -} (delay1 high vgaVSync, delay1 high vgaHSync, vgaR, vgaG, vgaB))
       where
-        txOut = pure low
+        -- txOut = pure low
 
         VGADriver{..} = vgaDriver vga640x480at60
         ps2 = decodePS2 $ samplePS2 PS2{..}

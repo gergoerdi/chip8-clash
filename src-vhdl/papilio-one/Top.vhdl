@@ -45,7 +45,7 @@ begin
   inst_chip8 : entity work.CHIP8
   port map (CLK_25MHZ => CLK_25MHZ,
             RESET => RESET,
-            RX => '0',
+            -- RX => '0',
             -- TX => TX,
             PS2_CLK => PS2CLK_A,
             PS2_DATA => PS2DATA_A,
