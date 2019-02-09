@@ -131,7 +131,7 @@ begin
 	9	:	LUT_DATA	<=	16'h4110;  //Power down control
 	10	:	LUT_DATA	<=	16'h49A8;  //Set dither mode - 12-to-10 bit
 	11	:	LUT_DATA	<=	16'h5510;  //Set RGB in AVI infoframe
-	12	:	LUT_DATA	<=	16'h5608;  //Set active format aspect
+	12	:	LUT_DATA	<=	16'h5618;  //Set active format aspect
 	13	:	LUT_DATA	<=	16'h96F6;  //Set interrup
 	14	:	LUT_DATA	<=	16'h7307;  //Info frame Ch count to 8
 	15	:	LUT_DATA	<=	16'h761f;  //Set speaker allocation for 8 channels
