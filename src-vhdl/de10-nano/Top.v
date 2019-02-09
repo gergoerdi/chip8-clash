@@ -1,4 +1,4 @@
-module TopWrapper(
+module Top(
 
       ///////// FPGA /////////
       input              FPGA_CLK1_50,
