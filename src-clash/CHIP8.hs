@@ -43,6 +43,7 @@ type Dom25 = Dom "CLK_25MHZ" (FromHz 25_175_000)
           -- , PortProduct ""
             [ PortName "VGA_VSYNC"
             , PortName "VGA_HSYNC"
+            , PortName "VGA_DE"
             , PortName "VGA_RED"
             , PortName "VGA_GREEN"
             , PortName "VGA_BLUE"
@@ -58,6 +59,7 @@ topEntity
     -> ( -- Signal Dom25 Bit
        ( Signal Dom25 Bit
         , Signal Dom25 Bit
+        , Signal Dom25 Bool
         , Signal Dom25 (Unsigned 4)
         , Signal Dom25 (Unsigned 4)
         , Signal Dom25 (Unsigned 4)
@@ -65,11 +67,12 @@ topEntity
       )
 topEntity = exposeClockReset board
   where
-    board {- rxIn -} ps2Clk ps2Data = ({- txOut, -} (delay1 high vgaVSync, delay1 high vgaHSync, vgaR, vgaG, vgaB))
+    board {- rxIn -} ps2Clk ps2Data = ({- txOut, -} (delay1 high vgaVSync, delay1 high vgaHSync, delay1 False vgaVisible, vgaR, vgaG, vgaB))
       where
         -- txOut = pure low
 
         VGADriver{..} = vgaDriver vga640x480at60
+        vgaVisible = (isJust <$> vgaX) .&&. (isJust <$> vgaY)
         ps2 = decodePS2 $ samplePS2 PS2{..}
 
         x0 = (chipX =<<) <$> vgaX
