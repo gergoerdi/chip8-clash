@@ -82,7 +82,7 @@ topEntity = exposeClockReset board
 
         cpuIn = do
             cpuInFB <- framebuf $ cpuOutFBAddr <$> cpuOut
-            cpuInMem <- memRead
+            cpuInMem <- memRead memAddr
             cpuInKeys <- keys
             cpuInKeyEvent <- keyEvent
             cpuInVBlank <- delay1 False vgaStartFrame
@@ -95,10 +95,9 @@ topEntity = exposeClockReset board
             fontROM = rom $(lift hexDigits)
             mainRAM addr = unpack <$> blockRamFile d4096 "image.hex" addr (packWrite addr memWrite)
 
-            memRead = memoryMap memAddr $
-                UpTo 0x0200 fontROM :>
-                Default mainRAM :>
-                Nil
+            memRead = memoryMap $
+                UpTo 0x0200 fontROM $
+                Default mainRAM
 
         cpuOut = mealyState (runCPU defaultOut cpu) initState cpuIn
 
@@ -114,7 +113,7 @@ topEntity = exposeClockReset board
 type MemRead domain a b = Signal domain (Unsigned a) -> Signal domain b
 
 data MemSpec domain a b
-    = UpTo (Unsigned a) (MemRead domain a b)
+    = UpTo (Unsigned a) (MemRead domain a b) (MemSpec domain a b)
     | Default (MemRead domain a b)
 
 delay1
@@ -124,16 +123,14 @@ delay1 x = toSignal . delayed (singleton x) . fromSignal
 
 memoryMap
     :: (KnownNat a, HiddenClockReset domain gated synchronous)
-    => Signal domain (Unsigned a)
-    -> Vec n (MemSpec domain a b)
+    => MemSpec domain a b
+    -> Signal domain (Unsigned a)
     -> Signal domain b
-memoryMap addr mems = foldr (\spec -> mux (matches spec) (readFrom spec)) (errorX "memoryMap") mems
+memoryMap mems addr = go mems
   where
     addr' = delay1 0 addr
-    matches (Default _) = pure True
-    matches (UpTo lim _) = addr' .<. pure lim
-    readFrom (Default mem) = mem addr
-    readFrom (UpTo _ mem) = mem addr
+    go (UpTo lim mem mems) = mux (addr' .<. pure lim) (mem addr) $ go mems
+    go (Default mem) = mem addr
 
 monochrome :: (Bounded a) => Bit -> a
 monochrome b = if bitToBool b then maxBound else minBound
