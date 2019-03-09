@@ -67,7 +67,7 @@ topEntity
       )
 topEntity = exposeClockReset board
   where
-    board {- rxIn -} ps2Clk ps2Data = ({- txOut, -} (delay1 high vgaVSync, delay1 high vgaHSync, delay1 False vgaVisible, vgaR, vgaG, vgaB))
+    board {- rxIn -} ps2Clk ps2Data = ({- txOut, -} (vgaVSync, vgaHSync, register False vgaVisible, vgaR, vgaG, vgaB))
       where
         -- txOut = pure low
 
@@ -88,7 +88,7 @@ topEntity = exposeClockReset board
             cpuInMem <- memRead memAddr
             cpuInKeys <- keys
             cpuInKeyEvent <- keyEvent
-            cpuInVBlank <- delay1 False vgaStartFrame
+            cpuInVBlank <- register False vgaEndFrame
             pure CPUIn{..}
           where
             (keys, keyEvent) = keypad $ parseScanCode ps2
@@ -119,11 +119,6 @@ data MemSpec domain a b
     = UpTo (Unsigned a) (MemRead domain a b) (MemSpec domain a b)
     | Default (MemRead domain a b)
 
-delay1
-    :: (Undefined a, HiddenClockReset domain gated synchronous)
-    => a -> Signal domain a -> Signal domain a
-delay1 x = toSignal . delayed (singleton x) . fromSignal
-
 memoryMap
     :: (KnownNat a, HiddenClockReset domain gated synchronous)
     => MemSpec domain a b
@@ -131,7 +126,7 @@ memoryMap
     -> Signal domain b
 memoryMap mems addr = go mems
   where
-    addr' = delay1 0 addr
+    addr' = register 0 addr
     go (UpTo lim mem mems) = mux (addr' .<. pure lim) (mem addr) $ go mems
     go (Default mem) = mem addr
 
