@@ -47,16 +47,6 @@ video u_video (
 	.locked_export(gen_clk_locked));
 
 assign HDMI_TX_CLK = clk_25;
-	
-//vpg u_vpg (
-//	.clk_25(clk_25),
-//	.reset_n(gen_clk_locked),
-//	.vpg_de(HDMI_TX_DE),
-//	.vpg_hs(HDMI_TX_HS),
-//	.vpg_vs(HDMI_TX_VS),
-//	.vpg_r(HDMI_TX_D[23:16]),
-//	.vpg_g(HDMI_TX_D[15:8]),
-//	.vpg_b(HDMI_TX_D[7:0]) );
 
 CHIP8 u_chip8
       (.CLK_25MHZ(clk_25),
