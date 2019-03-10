@@ -2,6 +2,14 @@ module Top(
 
       ///////// FPGA /////////
       input              FPGA_CLK1_50,
+	
+		///////// Arduino ///////// 
+		inout       [15:0] ARDUINO_IO,
+		
+//		///////// Gergotron ///////// 
+//		input              PS2A_CLK,
+//		input              PS2A_DAT,
+////		output             PS2_EN,
 
       ///////// HDMI /////////
       inout              HDMI_I2C_SCL,
@@ -47,12 +55,13 @@ video u_video (
 	.locked_export(gen_clk_locked));
 
 assign HDMI_TX_CLK = clk_25;
+//assign PS2_EN = 1'b0;	
 
 CHIP8 u_chip8
       (.CLK_25MHZ(clk_25),
        .RESET(!gen_clk_locked),
-       .PS2_CLK(1'b0),
-       .PS2_DATA(1'b0),
+       .PS2_CLK(ARDUINO_IO[11]),
+       .PS2_DATA(ARDUINO_IO[12]),
        .VGA_VSYNC(HDMI_TX_VS),
        .VGA_HSYNC(HDMI_TX_HS),
        .VGA_DE(HDMI_TX_DE),
