@@ -25,12 +25,12 @@ clashProject = ClashProject
         , "-fclash-intwidth=32"
         ]
     , shakeDir = "clash-utils/shake"
-    , extraGenerated = \ClashKit{..} -> [buildDir </> "image.hex"]
+    , extraGenerated = \ClashKit{..} -> [buildDir </> "verilog" </> "CHIP8" {- clashModule -} </> "CHIP8" {- clashTopName -} </> "image.hex"]
     }
 
 main :: IO ()
 main = mainForCustom clashProject $ \ClashKit{..} -> do
-    buildDir </> "image.hex" %> \out -> do
+    buildDir </> "verilog" </> "CHIP8" </> "CHIP8" </> "image.hex" %> \out -> do
         imageFile <- fromMaybe "games/hidden.ch8" <$> getConfig "IMAGE"
 
         bs <- liftIO $ BS.unpack <$> BS.readFile imageFile
