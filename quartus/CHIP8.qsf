@@ -485,6 +485,7 @@ set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to SW[3]
 set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
 set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
 set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
+set_global_assignment -name HEX_FILE ../_build/image.hex
 set_global_assignment -name QSYS_FILE "../src-vhdl/de10-nano/video.qsys"
 set_global_assignment -name VERILOG_FILE "../src-vhdl/de10-nano/I2C_WRITE_WDATA.v"
 set_global_assignment -name VERILOG_FILE "../src-vhdl/de10-nano/I2C_Controller.v"
@@ -492,30 +493,29 @@ set_global_assignment -name VERILOG_FILE "../src-vhdl/de10-nano/I2C_HDMI_Config.
 set_global_assignment -name VERILOG_FILE vpg_source/vpg.v
 set_global_assignment -name SOURCE_FILE vpg_source/vpg.h
 set_global_assignment -name VERILOG_FILE vpg_source/vga_generator.v
-set_global_assignment -name VHDL_FILE ../_build/vhdl/CHIP8/CHIP8/chip8_types.vhdl
-set_global_assignment -name VHDL_FILE ../_build/vhdl/CHIP8/CHIP8/chip8_types_nybbles.vhdl
-set_global_assignment -name VHDL_FILE ../_build/vhdl/CHIP8/CHIP8/clash_sized_internal_unsigned_satadd.vhdl
-set_global_assignment -name VHDL_FILE ../_build/vhdl/CHIP8/CHIP8/clash_sized_internal_unsigned_deeperrorx.vhdl
-set_global_assignment -name VHDL_FILE ../_build/vhdl/CHIP8/CHIP8/clash_sized_internal_bitvector_deeperrorx.vhdl
-set_global_assignment -name VHDL_FILE ../_build/vhdl/CHIP8/CHIP8/clash_class_bitpack_bitpackword17.vhdl
-set_global_assignment -name VHDL_FILE ../_build/vhdl/CHIP8/CHIP8/chip8_video_chipy.vhdl
-set_global_assignment -name VHDL_FILE ../_build/vhdl/CHIP8/CHIP8/chip8_video_chipx.vhdl
-set_global_assignment -name VHDL_FILE ../_build/vhdl/CHIP8/CHIP8/chip8_opcode_decode.vhdl
-set_global_assignment -name VHDL_FILE ../_build/vhdl/CHIP8/CHIP8/chip8_memorymap.vhdl
-set_global_assignment -name VHDL_FILE ../_build/vhdl/CHIP8/CHIP8/chip8_keypad_keypad.vhdl
-set_global_assignment -name VHDL_FILE ../_build/vhdl/CHIP8/CHIP8/chip8_keypad_fromscancode.vhdl
-set_global_assignment -name VHDL_FILE ../_build/vhdl/CHIP8/CHIP8/chip8_delayed3.vhdl
-set_global_assignment -name VHDL_FILE ../_build/vhdl/CHIP8/CHIP8/chip8_delayed1.vhdl
-set_global_assignment -name VHDL_FILE ../_build/vhdl/CHIP8/CHIP8/chip8_alu_lfsr.vhdl
-set_global_assignment -name VHDL_FILE ../_build/vhdl/CHIP8/CHIP8/chip8_alu_alu.vhdl
-set_global_assignment -name VHDL_FILE ../_build/vhdl/CHIP8/CHIP8/cactus_clash_vga_vgadriver.vhdl
-set_global_assignment -name VHDL_FILE ../_build/vhdl/CHIP8/CHIP8/cactus_clash_ps2_shiftinleft.vhdl
-set_global_assignment -name VHDL_FILE ../_build/vhdl/CHIP8/CHIP8/cactus_clash_ps2_sampleps2.vhdl
-set_global_assignment -name VHDL_FILE ../_build/vhdl/CHIP8/CHIP8/cactus_clash_ps2_parsescancode.vhdl
-set_global_assignment -name VHDL_FILE ../_build/vhdl/CHIP8/CHIP8/cactus_clash_ps2_parity.vhdl
-set_global_assignment -name VHDL_FILE ../_build/vhdl/CHIP8/CHIP8/cactus_clash_ps2_isfalling.vhdl
-set_global_assignment -name VHDL_FILE ../_build/vhdl/CHIP8/CHIP8/cactus_clash_ps2_decodeps2.vhdl
-set_global_assignment -name VHDL_FILE ../_build/vhdl/CHIP8/CHIP8/chip8_mealy.vhdl
-set_global_assignment -name VHDL_FILE ../_build/vhdl/CHIP8/CHIP8/CHIP8.vhdl
+set_global_assignment -name VERILOG_FILE ../_build/verilog/CHIP8/CHIP8/CHIP8_Clash_Sized_Internal_Unsigned_satAdd.v
+set_global_assignment -name VERILOG_FILE ../_build/verilog/CHIP8/CHIP8/CHIP8_Clash_Sized_Internal_Unsigned_deepErrorX.v
+set_global_assignment -name VERILOG_FILE ../_build/verilog/CHIP8/CHIP8/CHIP8_Clash_Sized_Internal_BitVector_deepErrorX.v
+set_global_assignment -name VERILOG_FILE ../_build/verilog/CHIP8/CHIP8/CHIP8_Clash_Class_BitPack_BitPackWord17.v
+set_global_assignment -name VERILOG_FILE ../_build/verilog/CHIP8/CHIP8/CHIP8_CHIP8_Video_chipY.v
+set_global_assignment -name VERILOG_FILE ../_build/verilog/CHIP8/CHIP8/CHIP8_CHIP8_Video_chipX.v
+set_global_assignment -name VERILOG_FILE ../_build/verilog/CHIP8/CHIP8/CHIP8_CHIP8_Types_nybbles.v
+set_global_assignment -name VERILOG_FILE ../_build/verilog/CHIP8/CHIP8/CHIP8_CHIP8_Opcode_decode.v
+set_global_assignment -name VERILOG_FILE ../_build/verilog/CHIP8/CHIP8/CHIP8_CHIP8_memoryMap.v
+set_global_assignment -name VERILOG_FILE ../_build/verilog/CHIP8/CHIP8/CHIP8_CHIP8_mealy.v
+set_global_assignment -name VERILOG_FILE ../_build/verilog/CHIP8/CHIP8/CHIP8_CHIP8_Keypad_keypad.v
+set_global_assignment -name VERILOG_FILE ../_build/verilog/CHIP8/CHIP8/CHIP8_CHIP8_Keypad_fromScanCode.v
+set_global_assignment -name VERILOG_FILE ../_build/verilog/CHIP8/CHIP8/CHIP8_CHIP8_delayed3.v
+set_global_assignment -name VERILOG_FILE ../_build/verilog/CHIP8/CHIP8/CHIP8_CHIP8_delayed1.v
+set_global_assignment -name VERILOG_FILE ../_build/verilog/CHIP8/CHIP8/CHIP8_CHIP8_ALU_lfsr.v
+set_global_assignment -name VERILOG_FILE ../_build/verilog/CHIP8/CHIP8/CHIP8_CHIP8_ALU_alu.v
+set_global_assignment -name VERILOG_FILE ../_build/verilog/CHIP8/CHIP8/CHIP8_Cactus_Clash_VGA_vgaDriver.v
+set_global_assignment -name VERILOG_FILE ../_build/verilog/CHIP8/CHIP8/CHIP8_Cactus_Clash_PS2_shiftInLeft.v
+set_global_assignment -name VERILOG_FILE ../_build/verilog/CHIP8/CHIP8/CHIP8_Cactus_Clash_PS2_samplePS2.v
+set_global_assignment -name VERILOG_FILE ../_build/verilog/CHIP8/CHIP8/CHIP8_Cactus_Clash_PS2_parseScanCode.v
+set_global_assignment -name VERILOG_FILE ../_build/verilog/CHIP8/CHIP8/CHIP8_Cactus_Clash_PS2_parity.v
+set_global_assignment -name VERILOG_FILE ../_build/verilog/CHIP8/CHIP8/CHIP8_Cactus_Clash_PS2_isFalling.v
+set_global_assignment -name VERILOG_FILE ../_build/verilog/CHIP8/CHIP8/CHIP8_Cactus_Clash_PS2_decodePS2.v
+set_global_assignment -name VERILOG_FILE ../_build/verilog/CHIP8/CHIP8/CHIP8.v
 set_global_assignment -name VERILOG_FILE "../src-vhdl/de10-nano/Top.v"
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
