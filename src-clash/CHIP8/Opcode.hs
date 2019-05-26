@@ -76,7 +76,7 @@ decode hi lo = case codes of
     (0xf,   x, 0x3, 0x3) -> StoreBCD (reg x)
     (0xf,   x, 0x5, 0x5) -> StoreRegs (reg x)
     (0xf,   x, 0x6, 0x5) -> LoadRegs (reg x)
-    _                    -> errorX $ "Unknown opcode: " <> unwords [show a1, show a2, show a3, show a4]
+    _                    -> errorX $ "Unknown opcode: " -- <> unwords [show a1, show a2, show a3, show a4]
   where
     (a1, a2) = nybbles hi
     (a3, a4) = nybbles lo
@@ -99,4 +99,4 @@ decode hi lo = case codes of
     decodeFun n = fatal "Unknown Move function" n
 
 fatal :: (Show a) => String -> a -> b
-fatal s x = errorX $ s <> ": " <> show x
+fatal s x = errorX $ s -- <> ": " <> show x
