@@ -18,6 +18,8 @@ import Data.Maybe (fromMaybe)
 import Debug.Trace
 import Text.Printf
 
+import FetchM
+
 data DrawPhase
     = DrawRead
     | DrawWrite
@@ -25,7 +27,7 @@ data DrawPhase
 
 data Phase
     = Init
-    | Fetch1
+    | Fetching (Buffer 2 Word8)
     | Exec
     | StoreReg Reg
     | LoadReg Reg
@@ -50,8 +52,7 @@ data CPUIn = CPUIn
     }
 
 data CPUState = CPUState
-    { opHi, opLo :: Word8
-    , pc, ptr :: Addr
+    { pc, ptr :: Addr
     , registers :: Vec 16 Word8
     , stack :: Vec 24 Addr
     , sp :: Index 24
@@ -63,9 +64,7 @@ data CPUState = CPUState
 
 initState :: CPUState
 initState = CPUState
-    { opHi = 0x00
-    , opLo = 0x00
-    , pc = 0x200
+    { pc = 0x200
     , ptr = 0x000
     , registers = pure 0
     , stack = pure 0
@@ -98,31 +97,30 @@ cpu = do
     when cpuInVBlank $ modify $ \s -> s{ timer = fromMaybe 0 $ predIdx timer }
 
     case phase of
-        Init -> goto Fetch1
-        Fetch1 -> do
-            modify $ \s -> s
-                { opHi = cpuInMem
-                , pc = succ pc
-                }
-            goto Exec
-        Exec -> do
-            modify $ \s -> s
-                { opLo = cpuInMem
-                , pc = trace (printf "PC = %04x" (fromIntegral pc :: Word16)) $ succ pc
-                }
-            goto Fetch1
-            exec
+        Init -> goto $ Fetching def
+        Fetching buf -> do
+            buf' <- remember buf <$> do
+                modify $ \s -> s{ pc = trace (printf "PC = %04x" (fromIntegral pc :: Word16)) $ succ pc }
+                return cpuInMem
+            instr_ <- runFetchM buf' $ fetchInstr fetch
+            instr <- case instr_ of
+                Left Underrun -> goto (Fetching buf') >> abort
+                Left Overrun -> error "Overrun"
+                Right instr -> return instr
+            goto $ Fetching def
+            exec instr
+
         StoreReg r -> case predIdx r of
-            Nothing -> goto Fetch1
+            Nothing -> goto $ Fetching def
             Just r' -> storeReg r'
         LoadReg r -> loadReg r
         ClearFB xy -> clearFB xy
         Draw dp xy row col -> draw dp xy row col
         WaitKeyPress reg -> for_ cpuInKeyEvent $ \(pressed, key) -> when pressed $ do
             setReg reg $ fromIntegral key
-            goto Fetch1
+            goto $ Fetching def
         WriteBCD x i -> case succIdx i of
-            Nothing -> goto Fetch1
+            Nothing -> goto $ Fetching def
             Just i' -> do
                 let addr = ptr + fromIntegral i'
                 writeMem addr $ toBCDRom x !! i'
@@ -132,7 +130,7 @@ cpu = do
 
     clearFB xy = do
         writeFB xy low
-        goto $ maybe Fetch1 ClearFB $ succXY xy
+        goto $ maybe (Fetching def) ClearFB $ succXY xy
 
     setReg reg val = modify $ \s -> s{ registers = replace reg val (registers s) }
     getReg reg = gets $ (!! reg) . registers
@@ -147,7 +145,7 @@ cpu = do
         val <- cpuInMem <$> input
         setReg reg val
         case predIdx reg of
-            Nothing -> goto Fetch1
+            Nothing -> goto $ Fetching def
             Just reg' -> do
                 ptr <- gets ptr
                 readMem (ptr + fromIntegral reg')
@@ -175,10 +173,9 @@ cpu = do
         pc <- gets pc
         jump $ pc + 2
 
-    exec = do
+    exec instr = do
         CPUIn{..} <- input
-        CPUState{opHi, opLo} <- get
-        case traceShowId $ decode opHi opLo of
+        case traceShowId instr of
             ClearScreen -> clearFB minBound
             Ret -> do
                 popPC
@@ -263,7 +260,7 @@ cpu = do
         let next = msum [ (row,) <$> predIdx col
                         , (,maxBound) <$> predIdx row
                         ]
-        goto $ maybe Fetch1 (uncurry $ Draw DrawRead (x, y)) next
+        goto $ maybe (Fetching def) (uncurry $ Draw DrawRead (x, y)) next
     draw DrawRead (x, y) row col = do
         ptr <- gets ptr
         readFB (x + fromIntegral col, y + fromIntegral row)
