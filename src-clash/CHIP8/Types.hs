@@ -17,7 +17,7 @@ type VidX = Unsigned 6
 type VidY = Unsigned 5
 
 nybbles :: Word8 -> (Nybble, Nybble)
-nybbles = unpack . pack
+nybbles = bitCoerce
 
 toAddr :: Nybble -> Nybble -> Nybble -> Addr
-toAddr a1 a2 a3 = unpack . pack $ (a1, a2, a3)
+toAddr a1 a2 a3 = bitCoerce (a1, a2, a3)

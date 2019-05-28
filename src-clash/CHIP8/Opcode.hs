@@ -1,4 +1,3 @@
-{-# LANGUAGE PatternSynonyms #-}
 module CHIP8.Opcode
        ( Fun(..), Op(..)
        , decode
@@ -19,7 +18,7 @@ data Fun = Id
          | ShiftRight
          | SubtractFlip
          | ShiftLeft
-         deriving (Show)
+         deriving (Show, Generic, Undefined)
 
 data Op = ClearScreen
         | Ret
@@ -45,7 +44,7 @@ data Op = ClearScreen
         | StoreBCD Reg
         | StoreRegs Reg
         | LoadRegs Reg
-        deriving (Show)
+        deriving (Show, Generic, Undefined)
 
 decode :: Word8 -> Word8 -> Op
 decode hi lo = case codes of
@@ -84,7 +83,7 @@ decode hi lo = case codes of
     addr = toAddr a2 a3 a4
     imm = lo
 
-    reg = unpack . pack
+    reg = bitCoerce
 
     decodeFun :: Nybble -> Fun
     decodeFun 0x0 = Id
