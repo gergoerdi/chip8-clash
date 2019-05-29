@@ -231,7 +231,8 @@ cpu = do
             SetTimer regX -> do
                 val <- getReg regX
                 modify $ \s -> s{ timer = val }
-            -- SetSound regX -> do
+            SetSound regX -> do
+                return () -- TODO
             AddPtr regX -> do
                 x <- getReg regX
                 modify $ \s -> s{ ptr = ptr s + fromIntegral x }
