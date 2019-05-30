@@ -75,7 +75,7 @@ topEntity = exposeClockReset board
         x0 = (chipX =<<) <$> vgaX
         y0 = (chipY =<<) <$> vgaY
 
-        framebuf r = blockRam (replicate d2048 low) r' w
+        framebuf r = blockRamPow2 (pure low) r' w
           where
             r' = fbIndex <$> r
             w = packWrite (fbIndex <$> cpuOutFBAddr <$> cpuOut) (cpuOutFBWrite <$> cpuOut)
@@ -93,7 +93,7 @@ topEntity = exposeClockReset board
             memWrite = fmap pack <$> cpuOutMemWrite <$> cpuOut
 
             fontROM = rom $(lift hexDigits)
-            mainRAM addr = unpack <$> blockRamFile d4096 "image.hex" addr (packWrite addr memWrite)
+            mainRAM addr = unpack <$> blockRamFilePow2 "image.hex" addr (packWrite addr memWrite)
 
             memRead = memoryMap $
                 UpTo 0x0200 fontROM $
@@ -143,9 +143,3 @@ fbIndex = unpack . pack
 
 packWrite :: (Applicative f) => f a -> f (Maybe b) -> f (Maybe (a, b))
 packWrite addr x = sequenceA <$> ((,) <$> addr <*> x)
-
-d2048 :: SNat 2048
-d2048 = SNat
-
-d4096 :: SNat 4096
-d4096 = SNat
