@@ -10,6 +10,7 @@ import CHIP8.ALU
 
 import Cactus.Clash.Util
 import Cactus.Clash.CPU
+import Cactus.Clash.FetchM
 import Control.Monad.State
 import Data.Word
 import Data.Foldable (for_)
@@ -19,8 +20,6 @@ import GHC.Generics
 
 import Debug.Trace
 import Text.Printf
-
-import FetchM
 
 data DrawPhase
     = DrawRead
