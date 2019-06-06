@@ -14,6 +14,8 @@ import Control.Monad.State
 import Data.Word
 import Data.Foldable (for_)
 import Data.Maybe (fromMaybe)
+import Control.Monad.Identity
+import GHC.Generics
 
 import Debug.Trace
 import Text.Printf
@@ -74,14 +76,15 @@ initState = CPUState
     , randomState = 0
     }
 
-data CPUOut = CPUOut
-    { cpuOutMemAddr :: Addr
-    , cpuOutMemWrite :: Maybe Word8
-    , cpuOutFBAddr :: (VidX, VidY)
-    , cpuOutFBWrite :: Maybe Bit
+data CPUOut f = CPUOut
+    { cpuOutMemAddr :: HKD f Addr
+    , cpuOutMemWrite :: HKD f (Maybe Word8)
+    , cpuOutFBAddr :: HKD f (VidX, VidY)
+    , cpuOutFBWrite :: HKD f (Maybe Bit)
     }
+    deriving (Generic)
 
-defaultOut :: CPUState -> CPUOut
+defaultOut :: CPUState -> CPUOut Identity
 defaultOut CPUState{..} = CPUOut{..}
   where
     cpuOutMemAddr = pc
@@ -135,11 +138,11 @@ cpu = do
     setReg reg val = modify $ \s -> s{ registers = replace reg val (registers s) }
     getReg reg = gets $ (!! reg) . registers
 
-    writeMem addr val = tell $ \out -> out{ cpuOutMemAddr = addr, cpuOutMemWrite = Just val }
-    readMem addr = tell $ \out -> out{ cpuOutMemAddr = addr }
+    writeMem addr val = output (unG mempty){ cpuOutMemAddr = pure addr, cpuOutMemWrite = pure $ Just val }
+    readMem addr = output (unG mempty){ cpuOutMemAddr = pure addr }
 
-    writeFB xy val = tell $ \out -> out{ cpuOutFBAddr = xy, cpuOutFBWrite = Just val }
-    readFB xy = tell $ \out -> out{ cpuOutFBAddr = xy, cpuOutFBWrite = Nothing }
+    writeFB xy val = output (unG mempty){ cpuOutFBAddr = pure xy, cpuOutFBWrite = pure $ Just val }
+    readFB xy = output (unG mempty){ cpuOutFBAddr = pure xy, cpuOutFBWrite = pure $ Nothing }
 
     loadReg reg = do
         val <- cpuInMem <$> input
