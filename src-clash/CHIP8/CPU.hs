@@ -1,4 +1,4 @@
-{-# LANGUAGE RecordWildCards, NamedFieldPuns #-}
+{-# LANGUAGE RecordWildCards, NamedFieldPuns, OverloadedLabels #-}
 {-# LANGUAGE TupleSections #-}
 module CHIP8.CPU where
 
@@ -75,15 +75,15 @@ initState = CPUState
     , randomState = 0
     }
 
-data CPUOut f = CPUOut
-    { cpuOutMemAddr :: HKD f Addr
-    , cpuOutMemWrite :: HKD f (Maybe Word8)
-    , cpuOutFBAddr :: HKD f (VidX, VidY)
-    , cpuOutFBWrite :: HKD f (Maybe Bit)
+data CPUOut = CPUOut
+    { cpuOutMemAddr :: Addr
+    , cpuOutMemWrite :: Maybe Word8
+    , cpuOutFBAddr :: (VidX, VidY)
+    , cpuOutFBWrite :: (Maybe Bit)
     }
     deriving (Generic)
 
-defaultOut :: CPUState -> CPUOut Identity
+defaultOut :: CPUState -> CPUOut
 defaultOut CPUState{..} = CPUOut{..}
   where
     cpuOutMemAddr = pc
@@ -137,11 +137,11 @@ cpu = do
     setReg reg val = modify $ \s -> s{ registers = replace reg val (registers s) }
     getReg reg = gets $ (!! reg) . registers
 
-    writeMem addr val = output (unG mempty){ cpuOutMemAddr = pure addr, cpuOutMemWrite = pure $ Just val }
-    readMem addr = output (unG mempty){ cpuOutMemAddr = pure addr }
+    writeMem addr val = output $ #cpuOutMemAddr addr <> #cpuOutMemWrite (Just val)
+    readMem addr = output $ #cpuOutMemAddr addr
 
-    writeFB xy val = output (unG mempty){ cpuOutFBAddr = pure xy, cpuOutFBWrite = pure $ Just val }
-    readFB xy = output (unG mempty){ cpuOutFBAddr = pure xy, cpuOutFBWrite = pure $ Nothing }
+    writeFB xy val = output $ #cpuOutFBAddr xy <> #cpuOutFBWrite (Just val)
+    readFB xy = output $ #cpuOutFBAddr xy <> #cpuOutFBWrite Nothing
 
     loadReg reg = do
         val <- cpuInMem <$> input
