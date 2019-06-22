@@ -1,17 +1,3 @@
-CONFIG PROHIBIT=P60;
-CONFIG PROHIBIT=P69;
-CONFIG PROHIBIT=P144;
-CONFIG PART="XC6SLX9-TQG144-2";
-
-NET "CLK_32MHZ" LOC = "P94" | IOSTANDARD = LVTTL | TNM_NET = CLK_32;
-TIMESPEC TS_CLK_32MHZ = PERIOD "CLK_32" 32 MHz HIGH 50%;
-
-# NET LED1           LOC="P112" | IOSTANDARD=LVTTL | DRIVE=8 | SLEW=SLOW;          # LED1
-# NET RESET_BTN      LOC="P85"  | IOSTANDARD=LVTTL | PULLDOWN;                     # A11
-
-# NET RX             LOC="P101" | IOSTANDARD=LVTTL | DRIVE=8 | SLEW=FAST;          # RX
-# NET TX             LOC="P105" | IOSTANDARD=LVTTL | DRIVE=8 | SLEW=FAST | PULLUP; # TX
-
 # NET LEDS(3)        LOC="P61"  | IOSTANDARD=LVTTL;                                # A4
 # NET LEDS(2)        LOC="P66"  | IOSTANDARD=LVTTL;                                # A5
 # NET LEDS(1)        LOC="P67"  | IOSTANDARD=LVTTL;                                # A6
