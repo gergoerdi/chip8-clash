@@ -8,7 +8,6 @@ import CHIP8.Types
 import Clash.Prelude
 import Cactus.Clash.Util
 import Cactus.Clash.PS2
-import Data.Word
 import Data.Maybe (fromMaybe, isJust, fromJust)
 import Control.Monad (guard)
 import Data.Traversable (forM)
@@ -30,8 +29,7 @@ applyEvent :: (Bool, Key) -> KeypadState -> KeypadState
 applyEvent (state, key) = replace key state
 
 fromScanCode :: ScanCode -> Maybe (Bool, Key)
-fromScanCode (ScanCode ev ext code) = do
-    guard $ ext == False
+fromScanCode (ScanCode ev code) = do
     (_, key) <- find ((code ==) . fst) (zip (concat codes) (concat layout))
     pure (ev == KeyPress, key)
 
@@ -43,10 +41,10 @@ layout =
     (0xa :> 0x0 :> 0xb :> 0xf :> Nil) :>
     Nil
 
-codes :: Vec 4 (Vec 4 Word8)
+codes :: Vec 4 (Vec 4 (Unsigned 9))
 codes =
-    (0x16 :> 0x1e :> 0x26 :> 0x25 :> Nil) :>
-    (0x15 :> 0x1d :> 0x24 :> 0x2d :> Nil) :>
-    (0x1c :> 0x1b :> 0x23 :> 0x2b :> Nil) :>
-    (0x1a :> 0x22 :> 0x21 :> 0x2a :> Nil) :>
+    (0x016 :> 0x01e :> 0x026 :> 0x025 :> Nil) :>
+    (0x015 :> 0x01d :> 0x024 :> 0x02d :> Nil) :>
+    (0x01c :> 0x01b :> 0x023 :> 0x02b :> Nil) :>
+    (0x01a :> 0x022 :> 0x021 :> 0x02a :> Nil) :>
     Nil
